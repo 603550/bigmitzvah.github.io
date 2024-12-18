@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Tehillim</title>
+  <script>
+    function redirect() {
+      const timezone = 'America/Montreal';
+      const today = new Date(new Date().toLocaleString('en-US', { timeZone: timezone }));
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const year = today.getFullYear();
+      const redirectUrl = `https://www.chabad.org/dailystudy/tehillim.asp?tdate=${month}/${day}/${year}&lang=heb`;
+      window.location.href = redirectUrl;
+    }
+    redirect();
+  </script>
+</head>
+<body>
+  <p>Redirecting to the daily Tehillim page...</p>
+</body>
+</html>
