@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Tehillim / Chabad.org</title>
+  
+  <!-- Prevent caching -->
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="-1">
+  
+  <!-- Immediate redirect -->
+  <script>
+    (function redirect() {
+      const timezone = 'America/Montreal';
+      const today = new Date(new Date().toLocaleString('en-US', { timeZone: timezone }));
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const year = today.getFullYear();
+      const redirectUrl = `https://www.chabad.org/dailystudy/tehillim.asp?tdate=${month}/${day}/${year}&lang=heb`;
+      window.location.href = redirectUrl;
+    })();
+  </script>
+</head>
+<body>
+  <noscript>
+    <meta http-equiv="refresh" content="0; url=https://www.chabad.org/dailystudy/tehillim.asp/lang/heb">
+    <p>If you are not redirected, <a href="https://www.chabad.org/dailystudy/tehillim.asp/lang/heb">click here</a>.</p>
+  </noscript>
+</body>
+</html>
