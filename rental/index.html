@@ -81,19 +81,19 @@
     <button id="manageRentalBtn" class="btn-custom">Manage Rentals</button>
     <button id="manageDriversBtn" class="btn-custom">Manage Drivers</button>
     <button id="enterChargeBtn" class="btn-custom">Enter a Charge</button>
+    <button id="generateReportBtn" class="btn-custom">Generate Report</button>
   </div>
 </div>
 
 
-  <!-- Step 2: Driver List -->
+   <!-- Step 2: Driver List -->
   <div id="driversSection" class="mt-4" style="display:none;">
-    <div class="card-body text-center">
-        <h5 class="card-title"><b>Select a Driver</b></h5>
-        <div id="driversList" class="mt-3"></div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <div id="driversList"></div>
       </div>
     </div>
   </div>
-
 
   <!-- Step 3: Driver Credentials -->
   <div id="driverDetails" class="mt-4" style="display:none;">
@@ -222,6 +222,12 @@ document.getElementById('manageDriversBtn').addEventListener('click', () => {
 document.getElementById('enterChargeBtn').addEventListener('click', () => {
   alert("🚧 Enter a Charge coming soon!");
 });
+
+// Generate Report placeholder
+document.getElementById('generateReportBtn').addEventListener('click', () => {
+  alert("🚧 Generate Report coming soon!");
+});
+
 
 
 // Step 2: Rental flow continues as before
