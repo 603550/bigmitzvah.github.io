@@ -78,7 +78,7 @@
 <div id="menuSection" class="card shadow-sm mx-auto" style="max-width:400px;">
   <div class="card-body text-center">
     <h5 class="card-title"><b>Welcome to BigMitzvah.org</b></h5>
-    <button id="manageRentalBtn" class="btn-custom">Manage Rental</button>
+    <button id="manageRentalBtn" class="btn-custom">Manage Rentals</button>
     <button id="manageDriversBtn" class="btn-custom">Manage Drivers</button>
     <button id="enterChargeBtn" class="btn-custom">Enter a Charge</button>
   </div>
@@ -171,7 +171,7 @@
 
   document.getElementById('homeLogo').addEventListener('click', () => location.reload());
 
-  document.getElementById('selectDriverBtn').addEventListener('click', () => {
+  document.getElementById('manageRentalBtn').addEventListener('click', () => {
     document.getElementById('menuSection').style.display = "none";
     document.getElementById('driversSection').style.display = "block";
     const driversList = document.getElementById('driversList');
