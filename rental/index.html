@@ -71,7 +71,7 @@
       <div class="card-body text-start">
         <h5 id="driverName" class="fw-bold"></h5>
         <hr>
-        <p><strong>Phone:</strong> <span id="driverPhone"></span></p>
+        <p><strong>Phone:</strong> <a id="driverPhone" href="" class="text-decoration-none"></a></p>
         <p><strong>License:</strong> <span id="driverLicense"></span></p>
         <p><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
         <p><strong>Card:</strong> **** **** **** <span id="driverCard"></span></p>
@@ -162,6 +162,7 @@
     document.getElementById('driverDetails').style.display = "block";
     document.getElementById('driverName').textContent = `${driver.firstname} ${driver.lastname} (${driver.id})`;
     document.getElementById('driverPhone').textContent = driver.phone;
+    document.getElementById('driverPhone').setAttribute('href', 'tel:' + driver.phone.replace(/\D/g, '')); // clickable
     document.getElementById('driverLicense').textContent = driver.license;
     document.getElementById('driverExpiry').textContent = driver.expiry;
     document.getElementById('driverCard').textContent = driver.cc_last4;
@@ -171,7 +172,7 @@
     document.getElementById('driverDetails').style.display = "none";
     document.getElementById('verifySection').style.display = "block";
     document.getElementById('verificationMessage').innerHTML =
-      `An sms code was sent to ${selectedDriver.phone}.<br>(Temp code: 112358)`;
+      `An sms code was sent to <a href="tel:${selectedDriver.phone.replace(/\D/g, '')}" class="text-decoration-none">${selectedDriver.phone}</a>.<br><br>(Temp code: 112358)`;
   });
 
   document.getElementById('cancelDriverBtn').addEventListener('click', () => location.reload());
@@ -200,7 +201,7 @@
     document.getElementById('kmConfirmSection').style.display = "none";
     document.getElementById('successSection').style.display = "block";
     const now = new Date();
-    const rentalId = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${selectedDriver.id}-${enteredKM}-001`;
+    const rentalId = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${selectedDriver.id}-${enteredKM}-001`;
     document.getElementById('successMessage').innerHTML = `
       <br>
       Rental ID: ${rentalId}<br>
@@ -209,10 +210,9 @@
       Pickup Location: Location 001<br>
       Fees: $18 each day + $0.10 per KM<br><br>
       Note: Any tickets will be charged to your card ending in ${selectedDriver.cc_last4}.<br>
-      Any accidents will be claimed on insurance.<br>
       Only ${selectedDriver.firstname} ${selectedDriver.lastname} may drive the vehicle.<br>
       A gas card is available under the dash.<br><br>
-      ❤️ Have a wonderful day and do a Big Mitzvah!!
+      ❤️ Have a great day ... do a Big Mitzvah!!
     `;
   });
 
