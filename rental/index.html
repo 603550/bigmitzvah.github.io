@@ -75,12 +75,15 @@
   <img src="logo.png" alt="BigMitzvah Logo" class="logo" id="homeLogo">
 
   <!-- Step 1: Menu -->
-  <div id="menuSection" class="card shadow-sm mx-auto" style="max-width:400px;">
-    <div class="card-body text-center">
-      <h5 class="card-title"><b>Welcome to BigMitzvah.org</b></h5>
-      <button id="selectDriverBtn" class="btn-custom">Select a Driver</button>
-    </div>
+<div id="menuSection" class="card shadow-sm mx-auto" style="max-width:400px;">
+  <div class="card-body text-center">
+    <h5 class="card-title"><b>Welcome to BigMitzvah.org</b></h5>
+    <button id="manageRentalBtn" class="btn-custom">Manage Rental</button>
+    <button id="manageDriversBtn" class="btn-custom">Manage Drivers</button>
+    <button id="enterChargeBtn" class="btn-custom">Enter a Charge</button>
   </div>
+</div>
+
 
   <!-- Step 2: Driver List -->
   <div id="driversSection" class="mt-4" style="display:none;">
@@ -194,13 +197,29 @@
     document.getElementById('driverCard').textContent = driver.cc_last4;
   }
 
-  document.getElementById('startRentalBtn').addEventListener('click', () => {
-    document.getElementById('driverDetails').style.display = "none";
-    document.getElementById('verifySection').style.display = "block";
-    document.getElementById('verificationMessage').innerHTML =
-  `An SMS code was sent to <a href="tel:${selectedDriver.phone.replace(/\D/g,'')}" class="phone-link">${selectedDriver.phone}</a>.<br>(Temp code: 112358)`;
+ // Step 1: Handle Manage Rental button
+document.getElementById('manageRentalBtn').addEventListener('click', () => {
+  document.getElementById('menuSection').style.display = "none";
+  document.getElementById('driversSection').style.display = "block";
+});
 
-  });
+// Placeholder for future features
+document.getElementById('manageDriversBtn').addEventListener('click', () => {
+  alert("Manage Drivers coming soon!");
+});
+
+document.getElementById('enterChargeBtn').addEventListener('click', () => {
+  alert("Enter a Charge coming soon!");
+});
+
+// Step 2: Rental flow continues as before
+document.getElementById('startRentalBtn').addEventListener('click', () => {
+  document.getElementById('driverDetails').style.display = "none";
+  document.getElementById('verifySection').style.display = "block";
+  document.getElementById('verificationMessage').innerHTML =
+    `An SMS code was sent to <a href="tel:${selectedDriver.phone.replace(/\D/g,'')}" class="phone-link" style="color:black; text-decoration:none;">${selectedDriver.phone}</a>.<br>(Temp code: 112358)`;
+});
+
 
   document.getElementById('cancelDriverBtn').addEventListener('click', () => location.reload());
 
