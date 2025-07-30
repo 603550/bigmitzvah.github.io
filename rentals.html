@@ -9,6 +9,7 @@
     body {
       background-color: #a7c5c0;
       font-family: Arial, sans-serif;
+      color: #444; /* softer text */
     }
     .logo {
       display: block;
@@ -17,6 +18,21 @@
     }
     .card {
       border-radius: 12px;
+    }
+    .btn-driver {
+      background-color: #6ba29d;
+      color: white;
+      border: none;
+      margin: 5px 0;
+      padding: 15px;
+      width: 100%;
+      text-align: left;
+      font-size: 1.1em;
+      border-radius: 8px;
+    }
+    .btn-driver:hover {
+      background-color: #588883;
+      color: white;
     }
   </style>
 </head>
@@ -27,11 +43,11 @@
   <img src="logo-white.png" alt="BigMitzvah Logo" class="logo">
 
   <!-- Code Entry -->
-  <div class="card shadow-sm mx-auto" style="max-width: 400px;">
+  <div class="card shadow-sm mx-auto" style="max-width: 400px;" id="codeSection">
     <div class="card-body text-center">
       <h5 class="card-title">Please enter your code to get started</h5>
       <input type="password" id="adminCode" class="form-control my-3" placeholder="Enter Code">
-      <button id="codeBtn" class="btn btn-dark w-100">Submit</button>
+      <button id="codeBtn" class="btn btn-custom w-100">Submit</button>
       <div id="errorMsg" class="text-danger mt-2" style="display:none;">Invalid code. Please try again.</div>
     </div>
   </div>
@@ -41,46 +57,69 @@
     <div class="card shadow-sm">
       <div class="card-body">
         <h5 class="card-title">Select a Driver</h5>
-        <ul class="list-group" id="driversList"></ul>
+        <div id="driversList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Driver Details -->
+  <div id="driverDetails" class="mt-4" style="display:none;">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title" id="driverName"></h5>
+        <p><strong>Phone:</strong> <span id="driverPhone"></span></p>
+        <p><strong>License:</strong> <span id="driverLicense"></span></p>
+        <p><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
+        <p><strong>Card on File:</strong> **** **** **** <span id="driverCard"></span></p>
+        <input type="text" id="verifyCode" class="form-control my-2" placeholder="Enter verification code">
+        <button id="verifyBtn" class="btn btn-custom w-100">Verify</button>
+        <div id="verifyMsg" class="text-danger mt-2" style="display:none;">Invalid code. Try again.</div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-  const codeBtn = document.getElementById('codeBtn');
-  const errorMsg = document.getElementById('errorMsg');
-  const driversSection = document.getElementById('driversSection');
-  const driversList = document.getElementById('driversList');
-
   const drivers = [
-    {id: "BMD001", firstname: "David", lastname: "Kakon", phone: "5145740233"},
-    {id: "BMD002", firstname: "Shimon", lastname: "Partouche", phone: "5145550124"},
-    {id: "BMD003", firstname: "Yisroel", lastname: "Bernath", phone: "5145550125"},
-    {id: "BMD004", firstname: "Shmuly", lastname: "Weiss", phone: "5145550126"},
-    {id: "BMD005", firstname: "Shlomo", lastname: "Bannon", phone: "5145550127"}
+    {id: "BMD001", firstname: "David", lastname: "Kakon", phone: "(514) 574-0233", license: "X123456", expiry: "2026-05-10", cc_last4: "4242"},
+    {id: "BMD002", firstname: "Shimon", lastname: "Partouche", phone: "(514) 555-0124", license: "Y987654", expiry: "2025-11-20", cc_last4: "1111"},
+    {id: "BMD003", firstname: "Yisroel", lastname: "Bernath", phone: "(514) 555-0125", license: "Z135790", expiry: "2027-01-15", cc_last4: "2222"},
+    {id: "BMD004", firstname: "Shmuly", lastname: "Weiss", phone: "(514) 555-0126", license: "W246810", expiry: "2026-12-05", cc_last4: "3333"},
+    {id: "BMD005", firstname: "Shlomo", lastname: "Bannon", phone: "(514) 555-0127", license: "V112233", expiry: "2025-09-18", cc_last4: "4444"}
   ];
 
-  codeBtn.addEventListener('click', () => {
+  let selectedDriver = null;
+
+  document.getElementById('codeBtn').addEventListener('click', () => {
     const enteredCode = document.getElementById('adminCode').value;
     if (enteredCode === "5770") {
-      errorMsg.style.display = "none";
-      driversSection.style.display = "block";
+      document.getElementById('errorMsg').style.display = "none";
+      document.getElementById('driversSection').style.display = "block";
+      document.getElementById('codeSection').style.display = "none";
+      const driversList = document.getElementById('driversList');
       driversList.innerHTML = '';
       drivers.forEach(driver => {
-        const li = document.createElement('li');
-        li.className = "list-group-item d-flex justify-content-between align-items-center";
-        li.innerHTML = `
-          <span>${driver.firstname} ${driver.lastname}</span>
-          <button class="btn btn-sm btn-outline-dark">Select</button>
-        `;
-        driversList.appendChild(li);
+        const btn = document.createElement('button');
+        btn.className = "btn-driver";
+        btn.textContent = `${driver.firstname} ${driver.lastname}`;
+        btn.addEventListener("click", () => showDriverDetails(driver));
+        driversList.appendChild(btn);
       });
     } else {
-      errorMsg.style.display = "block";
-      driversSection.style.display = "none";
+      document.getElementById('errorMsg').style.display = "block";
     }
   });
+
+  function showDriverDetails(driver) {
+    selectedDriver = driver;
+    document.getElementById('driversSection').style.display = "none";
+    document.getElementById('driverDetails').style.display = "block";
+    document.getElementById('driverName').textContent = driver.firstname + " " + driver.lastname;
+    document.getElementById('driverPhone').textContent = driver.phone;
+    document.getElementById('driverLicense').textContent = driver.license;
+    document.getElementById('driverExpiry').textContent = driver.expiry;
+    document.getElementById('driverCard').textContent = driver.cc_last4;
+  }
 </script>
 
 </body>
