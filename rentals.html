@@ -5,70 +5,124 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BigMitzvah Rentals – Admin 5770</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .step { display: none; }
+    .step.active { display: block; }
+  </style>
 </head>
 <body class="bg-light">
 
-  <div class="container py-4">
+<div class="container py-4">
 
-    <!-- Step Header -->
-    <div class="text-center mb-4">
-      <h3>BigMitzvah Rentals</h3>
-      <p class="text-muted">Admin Code 5770</p>
-    </div>
-
-    <!-- Step 1: Admin Code -->
-    <div id="step1" class="card shadow-sm p-3">
-      <h5 class="mb-3">Enter Admin Code</h5>
-      <input type="password" class="form-control mb-3" placeholder="Admin Code">
-      <button class="btn btn-primary w-100">Continue</button>
-    </div>
-
-    <!-- Step 2: Choose Driver -->
-    <div id="step2" class="card shadow-sm p-3 d-none">
-      <h5 class="mb-3">Select Driver</h5>
-      <div class="list-group">
-        <button class="list-group-item list-group-item-action">John Doe – License Exp: 2025-08-01</button>
-        <button class="list-group-item list-group-item-action">Sarah Cohen – License Exp: 2026-01-15</button>
-      </div>
-    </div>
-
-    <!-- Step 3: Driver Verification -->
-    <div id="step3" class="card shadow-sm p-3 d-none">
-      <h5 class="mb-3">Driver Verification</h5>
-      <p>A code was sent to (555) 123‑4567</p>
-      <input type="text" class="form-control mb-3" placeholder="Enter Code">
-      <button class="btn btn-primary w-100">Verify</button>
-    </div>
-
-    <!-- Step 4: Starting KM -->
-    <div id="step4" class="card shadow-sm p-3 d-none">
-      <h5 class="mb-3">Enter Starting KM</h5>
-      <p>Previous KM: <strong>57,770</strong></p>
-      <input type="number" class="form-control mb-3" placeholder="Enter Starting KM">
-      <button class="btn btn-warning w-100 mb-2">Confirm</button>
-    </div>
-
-    <!-- Step 5: Rental Summary -->
-    <div id="step5" class="card shadow-sm p-3 d-none">
-      <h5 class="mb-3">Rental Summary</h5>
-      <ul class="list-group mb-3">
-        <li class="list-group-item">Rental ID: 20250729-BMD001-59770-001</li>
-        <li class="list-group-item">Driver: John Doe</li>
-        <li class="list-group-item">Start Time: July 29, 2025 – 6:30 PM</li>
-        <li class="list-group-item">Starting KM: 59,770</li>
-        <li class="list-group-item">Pickup Location: Location 001</li>
-      </ul>
-      <button class="btn btn-success w-100">Start Rental</button>
-    </div>
-
-    <!-- Success Screen -->
-    <div id="success" class="card shadow-sm p-3 text-center d-none">
-      <h4 class="text-success">✅ Rental Started Successfully!</h4>
-      <button class="btn btn-primary w-100 mt-3">Return Home</button>
-    </div>
-
+  <div class="text-center mb-4">
+    <h3>BigMitzvah Rentals</h3>
+    <p class="text-muted">Admin Code 5770</p>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Step 1: Driver Selection -->
+  <div id="step1" class="step active">
+    <h5>Select a Driver</h5>
+    <ul id="driverList" class="list-group mb-3"></ul>
+  </div>
+
+  <!-- Step 2: Code Verification -->
+  <div id="step2" class="step">
+    <h5>Code Verification</h5>
+    <p id="driverInfo"></p>
+    <input type="text" id="codeInput" class="form-control mb-3" placeholder="Enter code">
+    <button class="btn btn-primary w-100" onclick="verifyCode()">Verify</button>
+  </div>
+
+  <!-- Step 3: Enter Starting KM -->
+  <div id="step3" class="step">
+    <h5>Enter Starting KM</h5>
+    <p>Last recorded KM: <span id="lastKm">57,770</span></p>
+    <input type="number" id="kmInput" class="form-control mb-3" placeholder="Enter KM">
+    <button class="btn btn-success w-100" onclick="startRental()">Start Rental</button>
+  </div>
+
+  <!-- Step 4: Confirmation -->
+  <div id="step4" class="step">
+    <h5>✅ Rental Started</h5>
+    <div class="alert alert-success">
+      <p><strong>Rental ID:</strong> <span id="rentalId"></span></p>
+      <p><strong>Driver:</strong> <span id="confirmDriver"></span></p>
+      <p><strong>Start KM:</strong> <span id="confirmKm"></span></p>
+      <p><strong>Fees:</strong> $18/day + $0.10 per KM</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Simulated "database"
+  const drivers = [
+    { id: "BMD001", name: "David Cohen", phone: "(514) 123-4567", license: "ABC123", expiry: "2026-05-01", cc: "4321" },
+    { id: "BMD002", name: "Sarah Levy", phone: "(438) 765-4321", license: "XYZ789", expiry: "2025-12-15", cc: "9876" }
+  ];
+  const lastKm = 57770;
+  const secretCode = "112358";
+
+  let selectedDriver = null;
+
+  // Populate driver list
+  const driverList = document.getElementById("driverList");
+  drivers.forEach((d, idx) => {
+    const li = document.createElement("li");
+    li.className = "list-group-item list-group-item-action";
+    li.textContent = `${d.name} (${d.phone})`;
+    li.onclick = () => chooseDriver(idx);
+    driverList.appendChild(li);
+  });
+
+  function chooseDriver(idx) {
+    selectedDriver = drivers[idx];
+    document.getElementById("driverInfo").innerHTML =
+      `<strong>${selectedDriver.name}</strong><br>
+       Phone: ${selectedDriver.phone}<br>
+       License: ${selectedDriver.license}<br>
+       Expiry: ${selectedDriver.expiry}<br>
+       Card: XXXX XXXX XXXX ${selectedDriver.cc}`;
+    showStep(2);
+  }
+
+  function verifyCode() {
+    const entered = document.getElementById("codeInput").value.trim();
+    if (entered === secretCode) {
+      document.getElementById("lastKm").textContent = lastKm.toLocaleString();
+      showStep(3);
+    } else {
+      alert("❌ Wrong code. Try again.");
+    }
+  }
+
+  function startRental() {
+    const kmVal = parseInt(document.getElementById("kmInput").value);
+    if (isNaN(kmVal)) {
+      alert("❌ Please enter a valid KM number.");
+      return;
+    }
+    if (kmVal < lastKm) {
+      alert(`❌ KM cannot be less than ${lastKm.toLocaleString()}.`);
+      return;
+    }
+    if (Math.abs(kmVal - lastKm) > 100) {
+      if (!confirm(`⚠️ WARNING: ${kmVal.toLocaleString()} differs from last recorded ${lastKm.toLocaleString()} by more than 100 KM. Continue?`)) {
+        return;
+      }
+    }
+    const rentalId = `${new Date().toISOString().slice(0,10).replace(/-/g,"")}-${selectedDriver.id}-${kmVal}-001`;
+    document.getElementById("rentalId").textContent = rentalId;
+    document.getElementById("confirmDriver").textContent = selectedDriver.name;
+    document.getElementById("confirmKm").textContent = kmVal.toLocaleString();
+    showStep(4);
+  }
+
+  function showStep(num) {
+    document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+    document.getElementById("step" + num).classList.add("active");
+  }
+</script>
+
 </body>
 </html>
