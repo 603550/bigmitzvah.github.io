@@ -53,7 +53,7 @@
   <div id="driversSection" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
       <div class="card-body">
-        <h5 class="card-title">Select a Driver</h5>
+        
         <div id="driversList"></div>
       </div>
     </div>
@@ -77,7 +77,7 @@
   <div id="verifySection" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
       <div class="card-body text-center">
-        <p>📱 A verification code was sent via SMS (simulated).</p>
+        <p>A verification code was sent via SMS (112358).</p>
         <input type="text" id="verifyCode" class="form-control my-3" placeholder="Enter verification code">
         <button id="verifyBtn" class="btn-custom">Verify</button>
         <div id="verifyMsg" class="text-danger mt-2" style="display:none;">Invalid code. Try again.</div>
@@ -89,7 +89,7 @@
   <div id="kmSection" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
       <div class="card-body text-center">
-        <h5>Enter Starting KM</h5>
+        <h5>Enter a Starting KM</h5>
         <input type="number" id="startKM" class="form-control my-3" placeholder="Enter KM">
         <button id="kmConfirmBtn" class="btn-custom">Confirm KM</button>
       </div>
@@ -123,6 +123,8 @@
     {id: "BMD001", firstname: "David", lastname: "Kakon", phone: "(514) 574-0233", license: "X123456", expiry: "2026-05-10", cc_last4: "4242"},
     {id: "BMD002", firstname: "Shimon", lastname: "Partouche", phone: "(514) 555-0124", license: "Y987654", expiry: "2025-11-20", cc_last4: "1111"},
     {id: "BMD003", firstname: "Yisroel", lastname: "Bernath", phone: "(514) 555-0125", license: "Z135790", expiry: "2027-01-15", cc_last4: "2222"}
+    {id:  "BMD002", firstname: "Shmuly", lastname: "Weiss", phone: "(514) 555-0124", license: "Y987654", expiry: "2025-11-20", cc_last4: "1111"},
+    {id: "BMD003", firstname: "Shlomo", lastname: "Bannon", phone: "(514) 555-0125", license: "Z135790", expiry: "2027-01-15", cc_last4: "2222"}
   ];
 
   let selectedDriver = null;
