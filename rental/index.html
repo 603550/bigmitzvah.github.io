@@ -198,7 +198,8 @@
     document.getElementById('driverDetails').style.display = "none";
     document.getElementById('verifySection').style.display = "block";
     document.getElementById('verificationMessage').innerHTML =
-      `An sms code was sent to <a href="tel:${selectedDriver.phone.replace(/\D/g, '')}" class="text-decoration-none">${selectedDriver.phone}</a>.<br><br>(Temp code: 112358)`;
+  `An SMS code was sent to <a href="tel:${selectedDriver.phone.replace(/\D/g,'')}" class="phone-link">${selectedDriver.phone}</a>.<br>(Temp code: 112358)`;
+
   });
 
   document.getElementById('cancelDriverBtn').addEventListener('click', () => location.reload());
@@ -229,7 +230,7 @@
     const now = new Date();
     const rentalId = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${selectedDriver.id}-${enteredKM}-001`;
     document.getElementById('successMessage').innerHTML = `
-      <br>
+   <hr>
       Rental ID: ${rentalId}<br>
       Start Time: ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}<br>
       Starting KM: ${parseInt(enteredKM).toLocaleString()} KM<br>
