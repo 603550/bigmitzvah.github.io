@@ -197,20 +197,31 @@
     document.getElementById('driverCard').textContent = driver.cc_last4;
   }
 
- // Step 1: Handle Manage Rental button
+ // Manage Rental -> Show driver list
 document.getElementById('manageRentalBtn').addEventListener('click', () => {
   document.getElementById('menuSection').style.display = "none";
   document.getElementById('driversSection').style.display = "block";
+  const driversList = document.getElementById('driversList');
+  driversList.innerHTML = '';
+  drivers.forEach(driver => {
+    const btn = document.createElement('button');
+    btn.className = "btn-custom";
+    btn.textContent = `${driver.firstname} ${driver.lastname}`;
+    btn.addEventListener("click", () => showDriverDetails(driver));
+    driversList.appendChild(btn);
+  });
 });
 
-// Placeholder for future features
+// Manage Drivers placeholder
 document.getElementById('manageDriversBtn').addEventListener('click', () => {
-  alert("Manage Drivers coming soon!");
+  alert("🚧 Manage Drivers coming soon!");
 });
 
+// Enter a Charge placeholder
 document.getElementById('enterChargeBtn').addEventListener('click', () => {
-  alert("Enter a Charge coming soon!");
+  alert("🚧 Enter a Charge coming soon!");
 });
+
 
 // Step 2: Rental flow continues as before
 document.getElementById('startRentalBtn').addEventListener('click', () => {
