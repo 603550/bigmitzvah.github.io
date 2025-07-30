@@ -18,7 +18,7 @@
       cursor: pointer;
     }
     .btn-custom {
-      background-color: #4DB6AC;
+      background-color: #2c7a7b; /* Darker teal for better contrast */
       color: white;
       font-size: 1.1em;
       border: none;
@@ -28,7 +28,7 @@
       width: 100%;
     }
     .btn-custom:hover {
-      background-color: #399387;
+      background-color: #245f5f;
       color: white;
     }
     .card {
@@ -77,7 +77,7 @@
   <div id="verifySection" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
       <div class="card-body text-center">
-        <p>A verification code was sent via SMS.<br>(Temp code: 112358)</p>
+        <p id="verificationMessage"></p>
         <input type="tel" id="verifyCode" class="form-control my-3" placeholder="Enter verification code" inputmode="numeric">
         <button id="verifyBtn" class="btn-custom">Verify</button>
         <div id="verifyMsg" class="text-danger mt-2" style="display:none;">Invalid code. Try again.</div>
@@ -112,7 +112,7 @@
   <div id="successSection" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
       <div class="card-body text-start">
-        <h5><b>✅ Your rental has started!</b></h5>
+        <h5><b>✅ Your rental has started!</b><br/></h5>
         <p id="successMessage"></p>
       </div>
     </div>
@@ -142,7 +142,7 @@
     drivers.forEach(driver => {
       const btn = document.createElement('button');
       btn.className = "btn-custom";
-      btn.textContent = `${driver.firstname} ${driver.lastname} (${driver.id})`;
+      btn.textContent = `${driver.firstname} ${driver.lastname}`;
       btn.addEventListener("click", () => showDriverDetails(driver));
       driversList.appendChild(btn);
     });
@@ -162,6 +162,8 @@
   document.getElementById('startRentalBtn').addEventListener('click', () => {
     document.getElementById('driverDetails').style.display = "none";
     document.getElementById('verifySection').style.display = "block";
+    document.getElementById('verificationMessage').innerHTML = 
+      `A verification code was sent to ${selectedDriver.phone}.<br>(Temp code: 112358)`;
   });
 
   document.getElementById('verifyBtn').addEventListener('click', () => {
@@ -194,12 +196,12 @@
       Start Time: ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}<br>
       Starting KM: ${parseInt(enteredKM).toLocaleString()} KM<br>
       Pickup Location: Location 001<br>
-      Fees: $18 each calendar day + $0.10 per KM<br><br>
+      Fees: $18 each day + $0.10 per KM<br><br>
       Note: Any tickets will be charged to your card ending in ${selectedDriver.cc_last4}.<br>
       Any accidents will be claimed on insurance.<br>
       Only ${selectedDriver.firstname} ${selectedDriver.lastname} may drive the vehicle.<br>
       A gas card is available under the dash.<br><br>
-      ✅ Have a wonderful day and do a Big Mitzvah!!
+      Have a wonderful day and do a Big Mitzvah!!
     `;
   });
 
