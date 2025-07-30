@@ -7,14 +7,15 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
-      background-color: #000000;
+      background-color: #a7c5c0;
       font-family: Arial, sans-serif;
-      color: #444;
+      color: #333;
     }
     .logo {
       display: block;
       margin: 20px auto;
       max-width: 200px;
+      cursor: pointer;
     }
     .btn-custom {
       background-color: #4DB6AC;
@@ -39,12 +40,12 @@
 
 <div class="container py-4">
   <!-- Logo -->
-  <img src="logo.png" alt="BigMitzvah Logo" class="logo">
+  <img src="logo.png" alt="BigMitzvah Logo" class="logo" id="homeLogo">
 
   <!-- Step 1: Menu -->
   <div id="menuSection" class="card shadow-sm mx-auto" style="max-width:400px;">
     <div class="card-body text-center">
-      <h5 class="card-title"><b></b>Welcome to BigMitzvah.org</b></h5>
+      <h5 class="card-title"><b>Welcome to BigMitzvah.org</b></h5>
       <button id="selectDriverBtn" class="btn-custom">Select a Driver</button>
     </div>
   </div>
@@ -53,7 +54,6 @@
   <div id="driversSection" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
       <div class="card-body">
-        
         <div id="driversList"></div>
       </div>
     </div>
@@ -77,8 +77,8 @@
   <div id="verifySection" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
       <div class="card-body text-center">
-        <p>A verification code was sent via SMS to 5145740233 to validate the driver <br/>(temp code: 112358).</p>
-        <input type="text" id="verifyCode" class="form-control my-3" placeholder="Enter verification code">
+        <p>A verification code was sent via SMS.<br>(Temp code: 112358)</p>
+        <input type="tel" id="verifyCode" class="form-control my-3" placeholder="Enter verification code" inputmode="numeric">
         <button id="verifyBtn" class="btn-custom">Verify</button>
         <div id="verifyMsg" class="text-danger mt-2" style="display:none;">Invalid code. Try again.</div>
       </div>
@@ -90,7 +90,7 @@
     <div class="card shadow-sm">
       <div class="card-body text-center">
         <h5>Enter a Starting KM</h5>
-        <input type="number" id="startKM" class="form-control my-3" placeholder="Enter KM">
+        <input type="tel" id="startKM" class="form-control my-3" placeholder="Enter KM" inputmode="numeric">
         <button id="kmConfirmBtn" class="btn-custom">Confirm KM</button>
       </div>
     </div>
@@ -101,6 +101,7 @@
     <div class="card shadow-sm">
       <div class="card-body text-center">
         <h5 id="kmConfirmText"></h5>
+        <p>Is this correct?</p>
         <button id="kmYesBtn" class="btn-custom">Yes</button>
         <button id="kmNoBtn" class="btn-custom">No</button>
       </div>
@@ -111,7 +112,7 @@
   <div id="successSection" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
       <div class="card-body text-start">
-        <h5>✅ Your rental has started</h5>
+        <h5><b>✅ Your rental has started!</b></h5>
         <p id="successMessage"></p>
       </div>
     </div>
@@ -123,12 +124,15 @@
     {id: "BMD001", firstname: "David", lastname: "Kakon", phone: "(514) 574-0233", license: "X123456", expiry: "2026-05-10", cc_last4: "4242"},
     {id: "BMD002", firstname: "Shimon", lastname: "Partouche", phone: "(514) 555-0124", license: "Y987654", expiry: "2025-11-20", cc_last4: "1111"},
     {id: "BMD003", firstname: "Yisroel", lastname: "Bernath", phone: "(514) 555-0125", license: "Z135790", expiry: "2027-01-15", cc_last4: "2222"},
-    {id:  "BMD002", firstname: "Shmuly", lastname: "Weiss", phone: "(514) 555-0124", license: "Y987654", expiry: "2025-11-20", cc_last4: "1111"},
-    {id: "BMD003", firstname: "Shlomo", lastname: "Bannon", phone: "(514) 555-0125", license: "Z135790", expiry: "2027-01-15", cc_last4: "2222"}
+    {id: "BMD004", firstname: "Shmuly", lastname: "Weiss", phone: "(514) 555-0126", license: "W246810", expiry: "2026-09-12", cc_last4: "3333"},
+    {id: "BMD005", firstname: "Shlomo", lastname: "Bannon", phone: "(514) 555-0127", license: "V112233", expiry: "2028-03-08", cc_last4: "4444"}
   ];
 
   let selectedDriver = null;
   let enteredKM = null;
+
+  // Reset to home when logo clicked
+  document.getElementById('homeLogo').addEventListener('click', () => location.reload());
 
   document.getElementById('selectDriverBtn').addEventListener('click', () => {
     document.getElementById('menuSection').style.display = "none";
@@ -138,7 +142,7 @@
     drivers.forEach(driver => {
       const btn = document.createElement('button');
       btn.className = "btn-custom";
-      btn.textContent = `${driver.firstname} ${driver.lastname}`;
+      btn.textContent = `${driver.firstname} ${driver.lastname} (${driver.id})`;
       btn.addEventListener("click", () => showDriverDetails(driver));
       driversList.appendChild(btn);
     });
@@ -148,7 +152,7 @@
     selectedDriver = driver;
     document.getElementById('driversSection').style.display = "none";
     document.getElementById('driverDetails').style.display = "block";
-    document.getElementById('driverName').textContent = driver.firstname + " " + driver.lastname;
+    document.getElementById('driverName').textContent = `${driver.firstname} ${driver.lastname} (${driver.id})`;
     document.getElementById('driverPhone').textContent = driver.phone;
     document.getElementById('driverLicense').textContent = driver.license;
     document.getElementById('driverExpiry').textContent = driver.expiry;
@@ -173,9 +177,10 @@
   document.getElementById('kmConfirmBtn').addEventListener('click', () => {
     enteredKM = document.getElementById('startKM').value;
     if (enteredKM) {
+      const formattedKM = parseInt(enteredKM).toLocaleString();
       document.getElementById('kmSection').style.display = "none";
       document.getElementById('kmConfirmSection').style.display = "block";
-      document.getElementById('kmConfirmText').textContent = `You entered ${enteredKM} KM. Is this correct?`;
+      document.getElementById('kmConfirmText').textContent = `You entered ${formattedKM} KM`;
     }
   });
 
@@ -186,8 +191,8 @@
     const rentalId = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${selectedDriver.id}-${enteredKM}-001`;
     document.getElementById('successMessage').innerHTML = `
       Rental ID: ${rentalId}<br>
-      Start Time: ${now.toLocaleString()}<br>
-      Starting KM: ${enteredKM}<br>
+      Start Time: ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}<br>
+      Starting KM: ${parseInt(enteredKM).toLocaleString()} KM<br>
       Pickup Location: Location 001<br>
       Fees: $18 each calendar day + $0.10 per KM<br><br>
       Note: Any tickets will be charged to your card ending in ${selectedDriver.cc_last4}.<br>
