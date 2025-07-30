@@ -19,6 +19,18 @@
     .card {
       border-radius: 12px;
     }
+    .btn-custom {
+      background-color: #6ba29d;
+      color: white;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .btn-custom:hover {
+      background-color: #588883;
+      color: white;
+    }
     .btn-driver {
       background-color: #6ba29d;
       color: white;
@@ -26,7 +38,7 @@
       margin: 5px 0;
       padding: 15px;
       width: 100%;
-      text-align: left;
+      text-align: center;
       font-size: 1.1em;
       border-radius: 8px;
     }
@@ -62,18 +74,30 @@
     </div>
   </div>
 
-  <!-- Driver Details -->
+  <!-- Verification & KM Entry -->
   <div id="driverDetails" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title" id="driverName"></h5>
+      <div class="card-body text-center">
+        <h5 id="driverName"></h5>
         <p><strong>Phone:</strong> <span id="driverPhone"></span></p>
         <p><strong>License:</strong> <span id="driverLicense"></span></p>
         <p><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
-        <p><strong>Card on File:</strong> **** **** **** <span id="driverCard"></span></p>
+        <p><strong>Card:</strong> **** **** **** <span id="driverCard"></span></p>
         <input type="text" id="verifyCode" class="form-control my-2" placeholder="Enter verification code">
         <button id="verifyBtn" class="btn btn-custom w-100">Verify</button>
         <div id="verifyMsg" class="text-danger mt-2" style="display:none;">Invalid code. Try again.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KM Entry -->
+  <div id="kmEntrySection" class="mt-4" style="display:none;">
+    <div class="card shadow-sm">
+      <div class="card-body text-center">
+        <h5 class="card-title">Enter Starting KM</h5>
+        <input type="number" id="startKM" class="form-control my-3" placeholder="Enter KM">
+        <button id="kmBtn" class="btn btn-custom w-100">Confirm KM</button>
+        <div id="kmMsg" class="text-success mt-2" style="display:none;">✅ Rental started successfully!</div>
       </div>
     </div>
   </div>
@@ -120,6 +144,24 @@
     document.getElementById('driverExpiry').textContent = driver.expiry;
     document.getElementById('driverCard').textContent = driver.cc_last4;
   }
+
+  document.getElementById('verifyBtn').addEventListener('click', () => {
+    const entered = document.getElementById('verifyCode').value;
+    if (entered === "112358") {
+      document.getElementById('verifyMsg').style.display = "none";
+      document.getElementById('driverDetails').style.display = "none";
+      document.getElementById('kmEntrySection').style.display = "block";
+    } else {
+      document.getElementById('verifyMsg').style.display = "block";
+    }
+  });
+
+  document.getElementById('kmBtn').addEventListener('click', () => {
+    const kmVal = document.getElementById('startKM').value;
+    if (kmVal) {
+      document.getElementById('kmMsg').style.display = "block";
+    }
+  });
 </script>
 
 </body>
