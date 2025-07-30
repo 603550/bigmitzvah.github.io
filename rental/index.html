@@ -28,7 +28,7 @@
       width: 100%;
     }
     .btn-custom:hover {
-      background-color: #245f5f;
+      background-color: #4DB6AC;
       color: white;
     }
     .card {
@@ -63,7 +63,7 @@
   <div id="driverDetails" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
       <div class="card-body text-start">
-        <h5 id="driverName"></h5>
+        <h5 id="driverName"><b></b></b></h5><br/>
         <p><strong>Phone:</strong> <span id="driverPhone"></span></p>
         <p><strong>License:</strong> <span id="driverLicense"></span></p>
         <p><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
@@ -112,7 +112,7 @@
   <div id="successSection" class="mt-4" style="display:none;">
     <div class="card shadow-sm">
       <div class="card-body text-start">
-        <h5><b>✅ Your rental has started!</b><br/></h5>
+        <h5><b>✅ Your rental has started!</b></h5>
         <p id="successMessage"></p>
       </div>
     </div>
@@ -192,6 +192,7 @@
     const now = new Date();
     const rentalId = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${selectedDriver.id}-${enteredKM}-001`;
     document.getElementById('successMessage').innerHTML = `
+      <br>
       Rental ID: ${rentalId}<br>
       Start Time: ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}<br>
       Starting KM: ${parseInt(enteredKM).toLocaleString()} KM<br>
@@ -201,7 +202,7 @@
       Any accidents will be claimed on insurance.<br>
       Only ${selectedDriver.firstname} ${selectedDriver.lastname} may drive the vehicle.<br>
       A gas card is available under the dash.<br><br>
-      Have a wonderful day and do a Big Mitzvah!!
+      ❤️ Have a wonderful day and do a Big Mitzvah!!
     `;
   });
 
