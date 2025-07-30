@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BigMitzvah Rentals</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #a7c5c0;
+      font-family: Arial, sans-serif;
+      color: #444; /* softer text */
+    }
+    .logo {
+      display: block;
+      margin: 20px auto 30px auto;
+      max-width: 200px;
+    }
+    .card {
+      border-radius: 12px;
+    }
+    .btn-custom {
+      background-color: #6ba29d;
+      color: white;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .btn-custom:hover {
+      background-color: #588883;
+      color: white;
+    }
+    .btn-driver {
+      background-color: #6ba29d;
+      color: white;
+      border: none;
+      margin: 5px 0;
+      padding: 15px;
+      width: 100%;
+      text-align: center;
+      font-size: 1.1em;
+      border-radius: 8px;
+    }
+    .btn-driver:hover {
+      background-color: #588883;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container py-4">
+  <!-- Logo -->
+  <img src="logo-white.png" alt="BigMitzvah Logo" class="logo">
+
+  <!-- Code Entry -->
+  <div class="card shadow-sm mx-auto" style="max-width: 400px;" id="codeSection">
+    <div class="card-body text-center">
+      <h5 class="card-title">Please enter your code to get started</h5>
+      <input type="password" id="adminCode" class="form-control my-3" placeholder="Enter Code">
+      <button id="codeBtn" class="btn btn-custom w-100">Submit</button>
+      <div id="errorMsg" class="text-danger mt-2" style="display:none;">Invalid code. Please try again.</div>
+    </div>
+  </div>
+
+  <!-- Driver List -->
+  <div id="driversSection" class="mt-4" style="display:none;">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title">Select a Driver</h5>
+        <div id="driversList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Verification & KM Entry -->
+  <div id="driverDetails" class="mt-4" style="display:none;">
+    <div class="card shadow-sm">
+      <div class="card-body text-center">
+        <h5 id="driverName"></h5>
+        <p><strong>Phone:</strong> <span id="driverPhone"></span></p>
+        <p><strong>License:</strong> <span id="driverLicense"></span></p>
+        <p><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
+        <p><strong>Card:</strong> **** **** **** <span id="driverCard"></span></p>
+        <input type="text" id="verifyCode" class="form-control my-2" placeholder="Enter verification code">
+        <button id="verifyBtn" class="btn btn-custom w-100">Verify</button>
+        <div id="verifyMsg" class="text-danger mt-2" style="display:none;">Invalid code. Try again.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KM Entry -->
+  <div id="kmEntrySection" class="mt-4" style="display:none;">
+    <div class="card shadow-sm">
+      <div class="card-body text-center">
+        <h5 class="card-title">Enter Starting KM</h5>
+        <input type="number" id="startKM" class="form-control my-3" placeholder="Enter KM">
+        <button id="kmBtn" class="btn btn-custom w-100">Confirm KM</button>
+        <div id="kmMsg" class="text-success mt-2" style="display:none;">✅ Rental started successfully!</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const drivers = [
+    {id: "BMD001", firstname: "David", lastname: "Kakon", phone: "(514) 574-0233", license: "X123456", expiry: "2026-05-10", cc_last4: "4242"},
+    {id: "BMD002", firstname: "Shimon", lastname: "Partouche", phone: "(514) 555-0124", license: "Y987654", expiry: "2025-11-20", cc_last4: "1111"},
+    {id: "BMD003", firstname: "Yisroel", lastname: "Bernath", phone: "(514) 555-0125", license: "Z135790", expiry: "2027-01-15", cc_last4: "2222"},
+    {id: "BMD004", firstname: "Shmuly", lastname: "Weiss", phone: "(514) 555-0126", license: "W246810", expiry: "2026-12-05", cc_last4: "3333"},
+    {id: "BMD005", firstname: "Shlomo", lastname: "Bannon", phone: "(514) 555-0127", license: "V112233", expiry: "2025-09-18", cc_last4: "4444"}
+  ];
+
+  let selectedDriver = null;
+
+  document.getElementById('codeBtn').addEventListener('click', () => {
+    const enteredCode = document.getElementById('adminCode').value;
+    if (enteredCode === "5770") {
+      document.getElementById('errorMsg').style.display = "none";
+      document.getElementById('driversSection').style.display = "block";
+      document.getElementById('codeSection').style.display = "none";
+      const driversList = document.getElementById('driversList');
+      driversList.innerHTML = '';
+      drivers.forEach(driver => {
+        const btn = document.createElement('button');
+        btn.className = "btn-driver";
+        btn.textContent = `${driver.firstname} ${driver.lastname}`;
+        btn.addEventListener("click", () => showDriverDetails(driver));
+        driversList.appendChild(btn);
+      });
+    } else {
+      document.getElementById('errorMsg').style.display = "block";
+    }
+  });
+
+  function showDriverDetails(driver) {
+    selectedDriver = driver;
+    document.getElementById('driversSection').style.display = "none";
+    document.getElementById('driverDetails').style.display = "block";
+    document.getElementById('driverName').textContent = driver.firstname + " " + driver.lastname;
+    document.getElementById('driverPhone').textContent = driver.phone;
+    document.getElementById('driverLicense').textContent = driver.license;
+    document.getElementById('driverExpiry').textContent = driver.expiry;
+    document.getElementById('driverCard').textContent = driver.cc_last4;
+  }
+
+  document.getElementById('verifyBtn').addEventListener('click', () => {
+    const entered = document.getElementById('verifyCode').value;
+    if (entered === "112358") {
+      document.getElementById('verifyMsg').style.display = "none";
+      document.getElementById('driverDetails').style.display = "none";
+      document.getElementById('kmEntrySection').style.display = "block";
+    } else {
+      document.getElementById('verifyMsg').style.display = "block";
+    }
+  });
+
+  document.getElementById('kmBtn').addEventListener('click', () => {
+    const kmVal = document.getElementById('startKM').value;
+    if (kmVal) {
+      document.getElementById('kmMsg').style.display = "block";
+    }
+  });
+</script>
+
+</body>
+</html>
