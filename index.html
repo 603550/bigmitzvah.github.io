@@ -1,8 +1,26 @@
 <!DOCTYPE HTML>
-<html>
+<html lang="en">
 <head>
-    <meta HTTP-EQUIV="PRAGMA" CONTENT="NO-CACHE" />
-    <meta HTTP-EQUIV="Expires" content="Mon, 01 Jan 1990 12:00:00 GMT" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigMitzvah.org</title>
+
+    <!-- Prevent caching -->
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="Mon, 01 Jan 1990 12:00:00 GMT">
+
+    <!-- Open Graph (for Facebook, WhatsApp, LinkedIn, etc.) -->
+    <meta property="og:title" content="BigMitzvah.org">
+
+    <meta property="og:image" content="https://bigmitzvah.org/logo2.png">
+    <meta property="og:url" content="https://bigmitzvah.org/">
+    <meta property="og:type" content="website">
+
+    <!-- Twitter Card (for Twitter/X) -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="BigMitzvah.org">
+
+    <meta name="twitter:image" content="https://bigmitzvah.org/logo2.png">
 
     <style>
         img.image {
@@ -16,10 +34,6 @@
         img.image:empty {
             top: 50%;
             left: 50%;
-            -webkit-transform: translate(-50%, -50%);
-            -moz-transform: translate(-50%, -50%);
-            -ms-transform: translate(-50%, -50%);
-            -o-transform: translate(-50%, -50%);
             transform: translate(-50%, -50%);
         }
 
@@ -27,14 +41,9 @@
             img.image {
                 max-width: 100%;
             }
-
             img.image:empty {
                 top: 40%;
                 left: 50%;
-                -webkit-transform: translate(-50%, -50%);
-                -moz-transform: translate(-50%, -50%);
-                -ms-transform: translate(-50%, -50%);
-                -o-transform: translate(-50%, -50%);
                 transform: translate(-50%, -50%);
             }
         }
@@ -42,7 +51,7 @@
 </head>
 <body style="background-color:#000;">
     <a href="https://bigmitzvah.org/">
-        <img class="image" src="logo.png" />
+        <img class="image" src="logo.png" alt="BigMitzvah Logo" />
     </a>
 </body>
 </html>
