@@ -54,9 +54,10 @@
       margin-top: 20px; /* keeps all cards aligned */
     }
 
-    .card-body p {
+   .card-body p {
   font-size: 0.95em;   /* slightly smaller text */
-  line-height: 1.5;    /* tighter line height */
+  line-height: 1.5;    /* matches success card */
+  margin-bottom: 6px;  /* controls vertical spacing */
 }
     hr {
       margin: 10px 0;
@@ -97,7 +98,7 @@
     </div>
   </div>
 
-  <!-- Step 3: Driver Credentials -->
+<!-- Step 3: Driver Credentials -->
 <div id="driverDetails" class="card shadow-sm card-main" style="display:none;">
   <div class="card-body text-start">
     <h5 id="driverName" class="fw-bold mb-2"></h5>
@@ -105,7 +106,7 @@
     <p class="mb-1"><strong>Phone:</strong> <a id="driverPhone" href="" class="text-decoration-none"></a></p>
     <p class="mb-1"><strong>License:</strong> <span id="driverLicense"></span></p>
     <p class="mb-1"><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
-    <p class="mb-3"><strong>Card:</strong> **** **** **** <span id="driverCard"></span></p>
+    <p class="mb-2"><strong>Card:</strong> **** **** **** <span id="driverCard"></span></p>
     <button id="startRentalBtn" class="btn-custom">Start Rental</button>
     <button id="cancelDriverBtn" class="btn-custom" style="background-color:#888;">Cancel</button>
   </div>
