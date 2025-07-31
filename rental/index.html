@@ -48,6 +48,11 @@
     .card {
       border-radius: 12px;
     }
+    .card-main {
+      max-width: 400px;
+      margin: 0 auto;
+      margin-top: 20px; /* keeps all cards aligned */
+    }
     hr {
       margin: 10px 0;
       border: 0;
@@ -71,9 +76,8 @@
   <img src="logo.png" alt="BigMitzvah Logo" class="logo" id="homeLogo">
 
   <!-- Step 1: Menu -->
-  <div id="menuSection" class="card shadow-sm mx-auto" style="max-width:400px;">
+  <div id="menuSection" class="card shadow-sm card-main">
     <div class="card-body text-center">
-      
       <button id="manageRentalBtn" class="btn-custom">Manage Rentals</button>
       <button id="manageDriversBtn" class="btn-custom">Manage Drivers</button>
       <button id="enterChargeBtn" class="btn-custom">Enter a Charge</button>
@@ -82,74 +86,61 @@
   </div>
 
   <!-- Step 2: Driver List -->
-  <div id="driversSection" class="mt-4" style="display:none;">
-    <div class="card shadow-sm mx-auto" style="max-width:400px;">
-      <div class="card-body text-center">
-        
-        <div id="driversList"></div>
-      </div>
+  <div id="driversSection" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-center">
+      <div id="driversList"></div>
     </div>
   </div>
 
   <!-- Step 3: Driver Credentials -->
-  <div id="driverDetails" class="mt-4" style="display:none;">
-    <div class="card shadow-sm mx-auto" style="max-width:400px;">
-      <div class="card-body text-start">
-        <h5 id="driverName" class="fw-bold"></h5>
-        <hr>
-        <p><strong>Phone:</strong> <a id="driverPhone" href="" class="text-decoration-none"></a></p>
-        <p><strong>License:</strong> <span id="driverLicense"></span></p>
-        <p><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
-        <p><strong>Card:</strong> **** **** **** <span id="driverCard"></span></p>
-        <button id="startRentalBtn" class="btn-custom">Start Rental</button>
-        <button id="cancelDriverBtn" class="btn-custom" style="background-color:#888;">Cancel</button>
-      </div>
+  <div id="driverDetails" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-start">
+      <h5 id="driverName" class="fw-bold"></h5>
+      <hr>
+      <p><strong>Phone:</strong> <a id="driverPhone" href="" class="text-decoration-none"></a></p>
+      <p><strong>License:</strong> <span id="driverLicense"></span></p>
+      <p><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
+      <p><strong>Card:</strong> **** **** **** <span id="driverCard"></span></p>
+      <button id="startRentalBtn" class="btn-custom">Start Rental</button>
+      <button id="cancelDriverBtn" class="btn-custom" style="background-color:#888;">Cancel</button>
     </div>
   </div>
 
   <!-- Step 4: Code Verification -->
-  <div id="verifySection" class="mt-4" style="display:none;">
-    <div class="card shadow-sm mx-auto" style="max-width:400px;">
-      <div class="card-body text-center">
-        <p id="verificationMessage"></p>
-        <input type="tel" id="verifyCode" class="form-control my-3" placeholder="Enter verification code" inputmode="numeric">
-        <button id="verifyBtn" class="btn-custom">Verify</button>
-        <div id="verifyMsg" class="text-danger mt-2" style="display:none;">Invalid code. Try again.</div>
-      </div>
+  <div id="verifySection" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-center">
+      <p id="verificationMessage"></p>
+      <input type="tel" id="verifyCode" class="form-control my-3" placeholder="Enter verification code" inputmode="numeric">
+      <button id="verifyBtn" class="btn-custom">Verify</button>
+      <div id="verifyMsg" class="text-danger mt-2" style="display:none;">Invalid code. Try again.</div>
     </div>
   </div>
 
   <!-- Step 5: KM Entry -->
-  <div id="kmSection" class="mt-4" style="display:none;">
-    <div class="card shadow-sm mx-auto" style="max-width:400px;">
-      <div class="card-body text-center">
-        <h5>Enter a Starting KM</h5>
-        <input type="tel" id="startKM" class="form-control my-3" placeholder="Enter KM" inputmode="numeric">
-        <button id="kmConfirmBtn" class="btn-custom">Confirm KM</button>
-      </div>
+  <div id="kmSection" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-center">
+      <h5>Enter a Starting KM</h5>
+      <input type="tel" id="startKM" class="form-control my-3" placeholder="Enter KM" inputmode="numeric">
+      <button id="kmConfirmBtn" class="btn-custom">Confirm KM</button>
     </div>
   </div>
 
   <!-- Step 6: KM Confirmation -->
-  <div id="kmConfirmSection" class="mt-4" style="display:none;">
-    <div class="card shadow-sm mx-auto" style="max-width:400px;">
-      <div class="card-body text-center">
-        <h5 id="kmConfirmText"></h5>
-        <p>Is this correct?</p>
-        <button id="kmYesBtn" class="btn-custom">Yes</button>
-        <button id="kmNoBtn" class="btn-custom" style="background-color:#888;">No</button>
-      </div>
+  <div id="kmConfirmSection" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-center">
+      <h5 id="kmConfirmText"></h5>
+      <p>Is this correct?</p>
+      <button id="kmYesBtn" class="btn-custom">Yes</button>
+      <button id="kmNoBtn" class="btn-custom" style="background-color:#888;">No</button>
     </div>
   </div>
 
   <!-- Step 7: Success -->
-  <div id="successSection" class="mt-4" style="display:none;">
-    <div class="card shadow-sm mx-auto" style="max-width:400px;">
-      <div class="card-body text-start">
-        <h5><b>✅ Your rental has started!</b></h5>
-        <p id="successMessage"></p>
-        <button id="homeBtn" class="btn-custom mt-3">Homepage</button>
-      </div>
+  <div id="successSection" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-start">
+      <h5><b>✅ Your rental has started!</b></h5>
+      <p id="successMessage"></p>
+      <button id="homeBtn" class="btn-custom mt-3">Homepage</button>
     </div>
   </div>
 </div>
@@ -183,16 +174,10 @@
     });
   });
 
-  // Placeholders for other buttons
-  document.getElementById('manageDriversBtn').addEventListener('click', () => {
-    alert("🚧 Manage Drivers coming soon!");
-  });
-  document.getElementById('enterChargeBtn').addEventListener('click', () => {
-    alert("🚧 Enter a Charge coming soon!");
-  });
-   document.getElementById('generateReportBtn').addEventListener('click', () => {
-    alert("🚧 Generate Report coming soon!");
-  });
+  // Placeholders
+  document.getElementById('manageDriversBtn').addEventListener('click', () => alert("🚧 Manage Drivers coming soon!"));
+  document.getElementById('enterChargeBtn').addEventListener('click', () => alert("🚧 Enter a Charge coming soon!"));
+  document.getElementById('generateReportBtn').addEventListener('click', () => alert("🚧 Generate Report coming soon!"));
 
   function showDriverDetails(driver) {
     selectedDriver = driver;
