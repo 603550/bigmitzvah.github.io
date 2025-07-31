@@ -8,7 +8,7 @@
   <!-- Open Graph -->
   <meta property="og:title" content="BigMitzvah.org Admin Panel">
   <meta property="og:image" content="https://bigmitzvah.org/logo2.png">
-  <meta property="og:url" content="https://bigmitzvah.org/rental/index.html">
+  <meta property="og:url" content="https://bigmitzvah.org/booking/index.html">
   <meta property="og:type" content="website">
 
   <!-- Twitter Card -->
@@ -84,10 +84,10 @@
   <!-- Step 1: Menu -->
   <div id="menuSection" class="card shadow-sm card-main">
     <div class="card-body text-center">
-      <button id="manageRentalBtn" class="btn-custom">Manage Rentals</button>
+      <button id="manageBookingBtn" class="btn-custom">Manage Bookings</button>
       <button id="manageDriversBtn" class="btn-custom">Manage Drivers</button>
       <button id="enterChargeBtn" class="btn-custom">Enter a Charge</button>
-      <button id="generateReportBtn" class="btn-custom">Generate Report</button>
+      <button id="generateReportBtn" class="btn-custom">Generate Booking</button>
     </div>
   </div>
 
@@ -107,7 +107,7 @@
     <p class="mb-1"><strong>License:</strong> <span id="driverLicense"></span></p>
     <p class="mb-1"><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
     <p class="mb-2"><strong>Card:</strong> **** **** **** <span id="driverCard"></span></p>
-    <button id="startRentalBtn" class="btn-custom">Start Rental</button>
+    <button id="startBookingBtn" class="btn-custom">Start Booking</button>
     <button id="cancelDriverBtn" class="btn-custom" style="background-color:#888;">Cancel</button>
   </div>
 </div>
@@ -144,7 +144,7 @@
   <!-- Step 7: Success -->
   <div id="successSection" class="card shadow-sm card-main" style="display:none;">
     <div class="card-body text-start">
-      <h5><b>✅ Your rental has started!</b></h5>
+      <h5><b>✅ Your booking has started!</b></h5>
       <p id="successMessage"></p>
       <button id="homeBtn" class="btn-custom mt-3">Homepage</button>
     </div>
@@ -165,8 +165,8 @@
 
   document.getElementById('homeLogo').addEventListener('click', () => location.reload());
 
-  // Manage Rentals button -> show driver list
-  document.getElementById('manageRentalBtn').addEventListener('click', () => {
+  // Manage Bookings button -> show driver list
+  document.getElementById('manageBookingBtn').addEventListener('click', () => {
     document.getElementById('menuSection').style.display = "none";
     document.getElementById('driversSection').style.display = "block";
     const driversList = document.getElementById('driversList');
@@ -198,7 +198,7 @@
     document.getElementById('driverCard').textContent = driver.cc_last4;
   }
 
-  document.getElementById('startRentalBtn').addEventListener('click', () => {
+  document.getElementById('startBookingBtn').addEventListener('click', () => {
     document.getElementById('driverDetails').style.display = "none";
     document.getElementById('verifySection').style.display = "block";
     document.getElementById('verificationMessage').innerHTML =
@@ -231,10 +231,10 @@
     document.getElementById('kmConfirmSection').style.display = "none";
     document.getElementById('successSection').style.display = "block";
     const now = new Date();
-    const rentalId = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${selectedDriver.id}-${enteredKM}`;
+    const bookingId = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${selectedDriver.id}-${enteredKM}`;
     document.getElementById('successMessage').innerHTML = `
       <hr>
-      Rental ID: ${rentalId}<br>
+      Booking ID: ${bookingId}<br>
       Start Time: ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}<br>
       Starting KM: ${parseInt(enteredKM).toLocaleString()} KM<br>
       Fees: $18 each day + $0.10 per KM<br><br>
