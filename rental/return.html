@@ -60,14 +60,14 @@
   <!-- Logo -->
   <img src="logo.png" alt="BigMitzvah Logo" class="logo" id="homeLogo">
 
-  <!-- Step 1: Active Rental -->
-  <div id="activeRentalSection" class="card shadow-sm card-main">
+  <!-- Active Rental Info -->
+  <div id="rentalRecord" class="card shadow-sm card-main">
     <div class="card-body text-start">
-      <h5 class="fw-bold">⚠️ Active Rental in Progress</h5>
+      <h5 class="fw-bold mb-2">Active Rental</h5>
       <hr>
       <p><strong>Driver:</strong> David Kakon</p>
       <p><strong>Phone:</strong> (514) 574-0233</p>
-      <p><strong>Rental Start:</strong> July 29, 2025 at 12:22 PM (1 day ago)</p>
+      <p><strong>Rental Start:</strong> July 29, 2025, 12:22 PM (1 day ago)</p>
       <p><strong>Starting KM:</strong> 57,770 KM</p>
       <p><strong>Rental ID:</strong> 250729-BMD001-57770</p>
       <button id="completeRentalBtn" class="btn-custom">Complete Rental</button>
@@ -75,27 +75,27 @@
     </div>
   </div>
 
-  <!-- Step 2: Enter Ending KM -->
-  <div id="endingKMSection" class="card shadow-sm card-main" style="display:none;">
+  <!-- Enter Ending KM -->
+  <div id="endKmSection" class="card shadow-sm card-main" style="display:none;">
     <div class="card-body text-center">
       <h5>Enter Ending KM</h5>
       <input type="tel" id="endKM" class="form-control my-3" placeholder="Enter KM" inputmode="numeric">
-      <button id="endKMConfirmBtn" class="btn-custom">Confirm KM</button>
+      <button id="endKmConfirmBtn" class="btn-custom">Confirm KM</button>
     </div>
   </div>
 
-  <!-- Step 3: Confirm Ending KM -->
-  <div id="endKMConfirmSection" class="card shadow-sm card-main" style="display:none;">
+  <!-- Confirm Ending KM -->
+  <div id="endKmConfirmSection" class="card shadow-sm card-main" style="display:none;">
     <div class="card-body text-center">
-      <h5 id="endKMConfirmText"></h5>
+      <h5 id="endKmConfirmText"></h5>
       <p>Is this correct?</p>
-      <button id="endKMYesBtn" class="btn-custom">Yes</button>
-      <button id="endKMNoBtn" class="btn-custom" style="background-color:#888;">No</button>
+      <button id="endKmYesBtn" class="btn-custom">Yes</button>
+      <button id="endKmNoBtn" class="btn-custom" style="background-color:#888;">No</button>
     </div>
   </div>
 
-  <!-- Step 4: Show Charges -->
-  <div id="chargesSection" class="card shadow-sm card-main" style="display:none;">
+  <!-- Completion Section -->
+  <div id="completionSection" class="card shadow-sm card-main" style="display:none;">
     <div class="card-body text-start">
       <h5><b>✅ Your rental has now ended</b></h5>
       <hr>
@@ -107,74 +107,54 @@
       <p><strong>Ending KM:</strong> <span id="displayEndKM"></span> KM</p>
       <p><strong>Total KM Driven:</strong> 100 KM</p>
       <hr>
-      <p>Rental Charge: 3 days × $18.00 … <b>$54.00</b></p>
-      <p>Gas Charge: 100 KM × $0.10 … <b>$10.00</b></p>
-      <hr>
+      <p>Rental Charge: 3 days × $18.00 ... <b>$54.00</b></p>
+      <p>Gas Charge: 100 KM × $0.10 ... <b>$10.00</b></p>
       <p><b>Total Charge: $64.00</b> (Card ending 4242)</p>
       <button id="chargeCardBtn" class="btn-custom">Charge Card Now</button>
-      <button id="modifyAmountBtn" class="btn-custom" style="background-color:#888;">Modify Amount</button>
-      <button id="cancelChargeBtn" class="btn-custom" style="background-color:#aaa;">Cancel</button>
-    </div>
-  </div>
-
-  <!-- Step 5: Receipt -->
-  <div id="receiptSection" class="card shadow-sm card-main" style="display:none;">
-    <div class="card-body text-start">
-      <h5><b>✅ Payment Successful</b></h5>
-      <hr>
-      <p><strong>Receipt for Rental ID:</strong> 250729-BMD001-57770</p>
-      <p>Charged to card ending in 4242</p>
-      <p>Amount: $64.00 (ref: ch_123456)</p>
-      <p>Date: July 31, 2025, 12:24 PM</p><br>
-      <p><b>❤️ Thank you for using BigMitzvah.org!</b></p>
-      <button id="homeBtn" class="btn-custom mt-3">Homepage</button>
+      <button id="modifyAmountBtn" class="btn-custom" style="background-color:#666;">Modify Amount</button>
+      <button id="cancelFinalBtn" class="btn-custom" style="background-color:#888;">Cancel</button>
     </div>
   </div>
 </div>
 
 <script>
-  let enteredEndKM = null;
-
-  document.getElementById('homeLogo').addEventListener('click', () => location.href = "index.html");
-
   document.getElementById('completeRentalBtn').addEventListener('click', () => {
-    document.getElementById('activeRentalSection').style.display = "none";
-    document.getElementById('endingKMSection').style.display = "block";
+    document.getElementById('rentalRecord').style.display = "none";
+    document.getElementById('endKmSection').style.display = "block";
   });
 
-  document.getElementById('endKMConfirmBtn').addEventListener('click', () => {
-    enteredEndKM = document.getElementById('endKM').value;
-    if (enteredEndKM) {
-      const formattedKM = parseInt(enteredEndKM).toLocaleString();
-      document.getElementById('endingKMSection').style.display = "none";
-      document.getElementById('endKMConfirmSection').style.display = "block";
-      document.getElementById('endKMConfirmText').textContent = `You entered ${formattedKM} KM`;
+  document.getElementById('endKmConfirmBtn').addEventListener('click', () => {
+    const endKM = document.getElementById('endKM').value;
+    if (endKM) {
+      document.getElementById('endKmSection').style.display = "none";
+      document.getElementById('endKmConfirmSection').style.display = "block";
+      document.getElementById('endKmConfirmText').textContent = `You entered ${parseInt(endKM).toLocaleString()} KM`;
     }
   });
 
-  document.getElementById('endKMYesBtn').addEventListener('click', () => {
-    document.getElementById('endKMConfirmSection').style.display = "none";
-    document.getElementById('chargesSection').style.display = "block";
-    document.getElementById('displayEndKM').textContent = parseInt(enteredEndKM).toLocaleString();
+  document.getElementById('endKmYesBtn').addEventListener('click', () => {
+    document.getElementById('endKmConfirmSection').style.display = "none";
+    document.getElementById('completionSection').style.display = "block";
+    document.getElementById('displayEndKM').textContent = "57,870";
+    // Hide logo only on final page
+    document.getElementById('homeLogo').style.display = "none";
   });
 
-  document.getElementById('endKMNoBtn').addEventListener('click', () => {
-    document.getElementById('endKMConfirmSection').style.display = "none";
-    document.getElementById('endingKMSection').style.display = "block";
+  document.getElementById('endKmNoBtn').addEventListener('click', () => {
+    document.getElementById('endKmConfirmSection').style.display = "none";
+    document.getElementById('endKmSection').style.display = "block";
   });
 
   document.getElementById('chargeCardBtn').addEventListener('click', () => {
-    document.getElementById('chargesSection').style.display = "none";
-    document.getElementById('receiptSection').style.display = "block";
+    alert("✅ Card charged successfully!");
   });
 
   document.getElementById('modifyAmountBtn').addEventListener('click', () => {
-    alert("🚧 Modify Amount coming soon!");
+    alert("⚠️ Modify Amount coming soon!");
   });
 
-  document.getElementById('cancelRentalBtn').addEventListener('click', () => location.href = "index.html");
-  document.getElementById('cancelChargeBtn').addEventListener('click', () => location.href = "index.html");
-  document.getElementById('homeBtn').addEventListener('click', () => location.href = "index.html");
+  document.getElementById('cancelRentalBtn').addEventListener('click', () => location.reload());
+  document.getElementById('cancelFinalBtn').addEventListener('click', () => location.reload());
 </script>
 
 </body>
