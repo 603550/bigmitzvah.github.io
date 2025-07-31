@@ -11,47 +11,48 @@
 
     <!-- Open Graph (for Facebook, WhatsApp, LinkedIn, etc.) -->
     <meta property="og:title" content="BigMitzvah.org">
+
     <meta property="og:image" content="https://bigmitzvah.org/logo2.png">
     <meta property="og:url" content="https://bigmitzvah.org/">
     <meta property="og:type" content="website">
 
-    <!-- Twitter Card -->
+    <!-- Twitter Card (for Twitter/X) -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="BigMitzvah.org">
+
     <meta name="twitter:image" content="https://bigmitzvah.org/logo2.png">
 
     <style>
-        body {
-            background-color: #000;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-        }
         img.image {
             position: absolute;
             max-width: 80%;
             top: 10%;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 10%;
+            border-radius: 0px;
         }
-        .star-link {
-            position: absolute;
-            top: calc(10% + 80%); /* pushes star just under the logo */
+
+        img.image:empty {
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
-            font-size: 22px;
-            color: lightgrey;
-            text-decoration: none;
+            transform: translate(-50%, -50%);
         }
-        .star-link:hover {
-            color: white;
+
+        @media screen and (orientation: portrait) {
+            img.image {
+                max-width: 100%;
+            }
+            img.image:empty {
+                top: 40%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
         }
     </style>
 </head>
-<body>
+<body style="background-color:#000;">
     <a href="https://bigmitzvah.org/images">
         <img class="image" src="logo.png" alt="BigMitzvah Logo" />
     </a>
-    <a href="/booking" target="_blank" class="star-link">☆</a>
+   
 </body>
 </html>
