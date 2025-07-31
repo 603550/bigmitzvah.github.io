@@ -140,6 +140,11 @@
 </div>
 
 <script>
+  // Logo click -> go back to booking homepage
+  document.getElementById('homeLogo').addEventListener('click', () => {
+    window.location.href = "/booking/index.html";
+  });
+
   document.getElementById('completeBookingBtn').addEventListener('click', () => {
     document.getElementById('bookingRecord').style.display = "none";
     document.getElementById('endKmSection').style.display = "block";
@@ -179,7 +184,9 @@
 
   document.getElementById('cancelBookingBtn').addEventListener('click', () => location.reload());
   document.getElementById('cancelFinalBtn').addEventListener('click', () => location.reload());
-  document.getElementById('homeBtn')?.addEventListener('click', () => location.reload());
+  document.getElementById('homeBtn')?.addEventListener('click', () => {
+    window.location.href = "/booking/index.html";
+  });
 </script>
 
 </body>
