@@ -53,6 +53,11 @@
       margin: 0 auto;
       margin-top: 20px; /* keeps all cards aligned */
     }
+
+    .card-body p {
+  font-size: 0.95em;   /* slightly smaller text */
+  line-height: 1.2;    /* tighter line height */
+}
     hr {
       margin: 10px 0;
       border: 0;
@@ -93,18 +98,18 @@
   </div>
 
   <!-- Step 3: Driver Credentials -->
-  <div id="driverDetails" class="card shadow-sm card-main" style="display:none;">
-    <div class="card-body text-start">
-      <h5 id="driverName" class="fw-bold"></h5>
-      <hr>
-      <p><strong>Phone:</strong> <a id="driverPhone" href="" class="text-decoration-none"></a></p>
-      <p><strong>License:</strong> <span id="driverLicense"></span></p>
-      <p><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
-      <p><strong>Card:</strong> **** **** **** <span id="driverCard"></span></p>
-      <button id="startRentalBtn" class="btn-custom">Start Rental</button>
-      <button id="cancelDriverBtn" class="btn-custom" style="background-color:#888;">Cancel</button>
-    </div>
+<div id="driverDetails" class="card shadow-sm card-main" style="display:none;">
+  <div class="card-body text-start">
+    <h5 id="driverName" class="fw-bold mb-2"></h5>
+    <hr class="my-2">
+    <p class="mb-1"><strong>Phone:</strong> <a id="driverPhone" href="" class="text-decoration-none"></a></p>
+    <p class="mb-1"><strong>License:</strong> <span id="driverLicense"></span></p>
+    <p class="mb-1"><strong>Expiry:</strong> <span id="driverExpiry"></span></p>
+    <p class="mb-3"><strong>Card:</strong> **** **** **** <span id="driverCard"></span></p>
+    <button id="startRentalBtn" class="btn-custom">Start Rental</button>
+    <button id="cancelDriverBtn" class="btn-custom" style="background-color:#888;">Cancel</button>
   </div>
+</div>
 
   <!-- Step 4: Code Verification -->
   <div id="verifySection" class="card shadow-sm card-main" style="display:none;">
