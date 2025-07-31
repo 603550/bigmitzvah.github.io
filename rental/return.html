@@ -84,7 +84,17 @@
     </div>
   </div>
 
-  <!-- Step 3: Show Charges -->
+  <!-- Step 3: Confirm Ending KM -->
+  <div id="endKMConfirmSection" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-center">
+      <h5 id="endKMConfirmText"></h5>
+      <p>Is this correct?</p>
+      <button id="endKMYesBtn" class="btn-custom">Yes</button>
+      <button id="endKMNoBtn" class="btn-custom" style="background-color:#888;">No</button>
+    </div>
+  </div>
+
+  <!-- Step 4: Show Charges -->
   <div id="chargesSection" class="card shadow-sm card-main" style="display:none;">
     <div class="card-body text-start">
       <h5><b>✅ Your rental has now ended</b></h5>
@@ -94,7 +104,7 @@
       <p><strong>Rental End Time:</strong> July 31, 2025, 12:23 PM</p>
       <p><strong>Total Rental Days:</strong> 3 days</p>
       <p><strong>Starting KM:</strong> 57,770 KM</p>
-      <p><strong>Ending KM:</strong> 57,870 KM</p>
+      <p><strong>Ending KM:</strong> <span id="displayEndKM"></span> KM</p>
       <p><strong>Total KM Driven:</strong> 100 KM</p>
       <hr>
       <p>Rental Charge: 3 days × $18.00 … <b>$54.00</b></p>
@@ -107,7 +117,7 @@
     </div>
   </div>
 
-  <!-- Step 4: Receipt -->
+  <!-- Step 5: Receipt -->
   <div id="receiptSection" class="card shadow-sm card-main" style="display:none;">
     <div class="card-body text-start">
       <h5><b>✅ Payment Successful</b></h5>
@@ -123,35 +133,47 @@
 </div>
 
 <script>
+  let enteredEndKM = null;
+
   document.getElementById('homeLogo').addEventListener('click', () => location.href = "index.html");
 
-  // Move from active rental -> enter KM
   document.getElementById('completeRentalBtn').addEventListener('click', () => {
     document.getElementById('activeRentalSection').style.display = "none";
     document.getElementById('endingKMSection').style.display = "block";
   });
 
-  // Confirm KM (simulate DB save and charges)
   document.getElementById('endKMConfirmBtn').addEventListener('click', () => {
-    document.getElementById('endingKMSection').style.display = "none";
-    document.getElementById('chargesSection').style.display = "block";
+    enteredEndKM = document.getElementById('endKM').value;
+    if (enteredEndKM) {
+      const formattedKM = parseInt(enteredEndKM).toLocaleString();
+      document.getElementById('endingKMSection').style.display = "none";
+      document.getElementById('endKMConfirmSection').style.display = "block";
+      document.getElementById('endKMConfirmText').textContent = `You entered ${formattedKM} KM`;
+    }
   });
 
-  // Handle charge now
+  document.getElementById('endKMYesBtn').addEventListener('click', () => {
+    document.getElementById('endKMConfirmSection').style.display = "none";
+    document.getElementById('chargesSection').style.display = "block";
+    document.getElementById('displayEndKM').textContent = parseInt(enteredEndKM).toLocaleString();
+  });
+
+  document.getElementById('endKMNoBtn').addEventListener('click', () => {
+    document.getElementById('endKMConfirmSection').style.display = "none";
+    document.getElementById('endingKMSection').style.display = "block";
+  });
+
   document.getElementById('chargeCardBtn').addEventListener('click', () => {
     document.getElementById('chargesSection').style.display = "none";
     document.getElementById('receiptSection').style.display = "block";
   });
 
-  // Handle cancel actions
-  document.getElementById('cancelRentalBtn').addEventListener('click', () => location.href = "index.html");
-  document.getElementById('cancelChargeBtn').addEventListener('click', () => location.href = "index.html");
-
-  // Placeholder for modify
   document.getElementById('modifyAmountBtn').addEventListener('click', () => {
     alert("🚧 Modify Amount coming soon!");
   });
 
+  document.getElementById('cancelRentalBtn').addEventListener('click', () => location.href = "index.html");
+  document.getElementById('cancelChargeBtn').addEventListener('click', () => location.href = "index.html");
   document.getElementById('homeBtn').addEventListener('click', () => location.href = "index.html");
 </script>
 
