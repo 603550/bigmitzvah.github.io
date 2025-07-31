@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BigMitzvah.org Booking Return</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      background-color: #a7c5c0;
+      font-family: 'Libre Franklin', Arial, sans-serif;
+      color: #333;
+    }
+    .logo {
+      display: block;
+      margin: 10px auto;
+      max-width: 300px;
+      cursor: pointer;
+    }
+    .btn-custom {
+      background-color: #2c7a7b;
+      color: white;
+      font-size: 1.1em;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      width: 100%;
+    }
+    .btn-custom:hover {
+      background-color: #4DB6AC;
+      color: white;
+    }
+    .card {
+      border-radius: 12px;
+    }
+    .card-main {
+      max-width: 400px;
+      margin: 0 auto;
+      margin-top: 20px;
+    }
+    .card-body p {
+      font-size: 0.95em;
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+    hr {
+      margin: 10px 0;
+      border: 0;
+      border-top: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container py-4">
+  <!-- Logo -->
+  <img src="logo.png" alt="BigMitzvah Logo" class="logo" id="homeLogo">
+
+  <!-- Active Booking Info -->
+  <div id="bookingRecord" class="card shadow-sm card-main">
+    <div class="card-body text-start">
+      <h5 class="fw-bold mb-2">⚠️ Active booking in progress</h5>
+      <hr>
+      <p><strong>Driver:</strong> David Kakon</p>
+      <p><strong>Phone:</strong> (514) 574-0233</p>
+      <p><strong>Booking Start:</strong> July 29, 2025, 12:22 PM (1 day ago)</p>
+      <p><strong>Starting KM:</strong> 57,770 KM</p>
+      <p><strong>Booking ID:</strong> 250729-BMD001-57770</p>
+      <button id="completeBookingBtn" class="btn-custom">Complete Booking</button>
+      <button id="cancelBookingBtn" class="btn-custom" style="background-color:#888;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Enter Ending KM -->
+  <div id="endKmSection" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-center">
+      <h5>Enter Ending KM</h5>
+      <input type="tel" id="endKM" class="form-control my-3" placeholder="Enter KM" inputmode="numeric">
+      <button id="endKmConfirmBtn" class="btn-custom">Confirm KM</button>
+    </div>
+  </div>
+
+  <!-- Confirm Ending KM -->
+  <div id="endKmConfirmSection" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-center">
+      <h5 id="endKmConfirmText"></h5>
+      <p>Is this correct?</p>
+      <button id="endKmYesBtn" class="btn-custom">Yes</button>
+      <button id="endKmNoBtn" class="btn-custom" style="background-color:#888;">No</button>
+    </div>
+  </div>
+
+  <!-- Completion Section -->
+  <div id="completionSection" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-start">
+      <h5><b>✅ Your booking has now ended</b></h5>
+      <hr>
+      <p><strong>Booking ID:</strong> 250729-BMD001-57770</p>
+      <p><strong>Booking Start:</strong> July 29, 2025, 12:22 PM</p>
+      <p><strong>Booking End:</strong> July 31, 2025, 12:23 PM</p>
+      <p><strong>Total Days:</strong> 3 days</p>
+      <p><strong>Starting KM:</strong> 57,770 KM</p>
+      <p><strong>Ending KM:</strong> <span id="displayEndKM"></span> KM</p>
+      <p><strong>Total KM Driven:</strong> 100 KM</p>
+      <hr>
+      <p>Booking Charge: 3 days × $18.00 ... <b>$54.00</b></p>
+      <p>Gas Charge: 100 KM × $0.10 ... <b>$10.00</b></p>
+      <p><b>Total Charge: $64.00</b> (Card ending 4242)</p>
+      <button id="chargeCardBtn" class="btn-custom">Charge Card Now</button>
+      <button id="modifyAmountBtn" class="btn-custom" style="background-color:#666;">Modify Amount</button>
+      <button id="cancelFinalBtn" class="btn-custom" style="background-color:#888;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('completeBookingBtn').addEventListener('click', () => {
+    document.getElementById('bookingRecord').style.display = "none";
+    document.getElementById('endKmSection').style.display = "block";
+  });
+
+  document.getElementById('endKmConfirmBtn').addEventListener('click', () => {
+    const endKM = document.getElementById('endKM').value;
+    if (endKM) {
+      document.getElementById('endKmSection').style.display = "none";
+      document.getElementById('endKmConfirmSection').style.display = "block";
+      document.getElementById('endKmConfirmText').textContent = `You entered ${parseInt(endKM).toLocaleString()} KM`;
+    }
+  });
+
+  document.getElementById('endKmYesBtn').addEventListener('click', () => {
+    document.getElementById('endKmConfirmSection').style.display = "none";
+    document.getElementById('completionSection').style.display = "block";
+    document.getElementById('displayEndKM').textContent = "57,870";
+    // Hide logo only on final page
+    document.getElementById('homeLogo').style.display = "none";
+  });
+
+  document.getElementById('endKmNoBtn').addEventListener('click', () => {
+    document.getElementById('endKmConfirmSection').style.display = "none";
+    document.getElementById('endKmSection').style.display = "block";
+  });
+
+  document.getElementById('chargeCardBtn').addEventListener('click', () => {
+    alert("✅ Card charged successfully!");
+  });
+
+  document.getElementById('modifyAmountBtn').addEventListener('click', () => {
+    alert("⚠️ Modify Amount coming soon!");
+  });
+
+  document.getElementById('cancelBookingBtn').addEventListener('click', () => location.reload());
+  document.getElementById('cancelFinalBtn').addEventListener('click', () => location.reload());
+</script>
+
+</body>
+</html>
