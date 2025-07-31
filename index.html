@@ -9,50 +9,45 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="Mon, 01 Jan 1990 12:00:00 GMT">
 
-    <!-- Open Graph (for Facebook, WhatsApp, LinkedIn, etc.) -->
+    <!-- Open Graph -->
     <meta property="og:title" content="BigMitzvah.org">
-
     <meta property="og:image" content="https://bigmitzvah.org/logo2.png">
     <meta property="og:url" content="https://bigmitzvah.org/">
     <meta property="og:type" content="website">
 
-    <!-- Twitter Card (for Twitter/X) -->
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="BigMitzvah.org">
-
     <meta name="twitter:image" content="https://bigmitzvah.org/logo2.png">
 
     <style>
+        body {
+            background-color: #000;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
         img.image {
-            position: absolute;
+            display: block;
+            margin: 10% auto 10px auto;
             max-width: 80%;
-            top: 10%;
-            left: 10%;
-            border-radius: 0px;
         }
-
-        img.image:empty {
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        a.star-link {
+            display: block;
+            margin-top: 15px;
+            font-size: 24px;
+            color: lightgrey;
+            text-decoration: none;
         }
-
-        @media screen and (orientation: portrait) {
-            img.image {
-                max-width: 100%;
-            }
-            img.image:empty {
-                top: 40%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-            }
+        a.star-link:hover {
+            color: white;
         }
     </style>
 </head>
-<body style="background-color:#000;">
-    <a href="https://bigmitzvah.org/images">
+<body>
+    <a href="https://bigmitzvah.org/">
         <img class="image" src="logo.png" alt="BigMitzvah Logo" />
     </a>
-    <a href="/images" target="_blank">☆</a>
+
+    <a href="/booking" target="_blank" class="star-link">☆</a>
 </body>
 </html>
