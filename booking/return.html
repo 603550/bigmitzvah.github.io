@@ -115,6 +115,28 @@
       <button id="cancelFinalBtn" class="btn-custom" style="background-color:#888;">Cancel</button>
     </div>
   </div>
+
+  <!-- Receipt Section -->
+  <div id="receiptSection" class="card shadow-sm card-main" style="display:none;">
+    <div class="card-body text-start">
+      <h5><b>✅ Payment Successful</b></h5>
+      <hr>
+      <p><strong>Booking ID:</strong> 250729-BMD001-57770</p>
+      <p><strong>Booking Start:</strong> July 29, 2025, 12:22 PM</p>
+      <p><strong>Booking End:</strong> July 31, 2025, 12:23 PM</p>
+      <p><strong>Total Days:</strong> 3 days</p>
+      <p><strong>Starting KM:</strong> 57,770 KM</p>
+      <p><strong>Ending KM:</strong> 57,870 KM</p>
+      <p><strong>Total KM Driven:</strong> 100 KM</p>
+      <hr>
+      <p>Booking Charge: 3 days × $18.00 ... <b>$54.00</b></p>
+      <p>Gas Charge: 100 KM × $0.10 ... <b>$10.00</b></p>
+      <p><b>Total Charge: $64.00</b> (Card ending 4242)</p>
+      <hr>
+      <p>✅ The card ending 4242 has been charged successfully.</p>
+      <button id="homeBtn" class="btn-custom mt-3">Homepage</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -136,7 +158,7 @@
     document.getElementById('endKmConfirmSection').style.display = "none";
     document.getElementById('completionSection').style.display = "block";
     document.getElementById('displayEndKM').textContent = "57,870";
-    // Hide logo only on final page
+    // Hide logo only on final booking pages
     document.getElementById('homeLogo').style.display = "none";
   });
 
@@ -146,7 +168,9 @@
   });
 
   document.getElementById('chargeCardBtn').addEventListener('click', () => {
-    alert("✅ Card charged successfully!");
+    document.getElementById('completionSection').style.display = "none";
+    document.getElementById('receiptSection').style.display = "block";
+    document.getElementById('homeLogo').style.display = "none";
   });
 
   document.getElementById('modifyAmountBtn').addEventListener('click', () => {
@@ -155,6 +179,7 @@
 
   document.getElementById('cancelBookingBtn').addEventListener('click', () => location.reload());
   document.getElementById('cancelFinalBtn').addEventListener('click', () => location.reload());
+  document.getElementById('homeBtn')?.addEventListener('click', () => location.reload());
 </script>
 
 </body>
