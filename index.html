@@ -9,47 +9,50 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="Mon, 01 Jan 1990 12:00:00 GMT">
 
-    <!-- Open Graph -->
+    <!-- Open Graph (for Facebook, WhatsApp, LinkedIn, etc.) -->
     <meta property="og:title" content="BigMitzvah.org">
+
     <meta property="og:image" content="https://bigmitzvah.org/logo2.png">
     <meta property="og:url" content="https://bigmitzvah.org/">
     <meta property="og:type" content="website">
 
-    <!-- Twitter Card -->
+    <!-- Twitter Card (for Twitter/X) -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="BigMitzvah.org">
+
     <meta name="twitter:image" content="https://bigmitzvah.org/logo2.png">
 
     <style>
-        body {
-            background-color: #000;
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
         img.image {
+            position: absolute;
             max-width: 80%;
-            height: auto;
+            top: 10%;
+            left: 10%;
+            border-radius: 0px;
         }
-        a.star-link {
-            margin-top: 20px;
-            font-size: 24px;
-            color: lightgrey;
-            text-decoration: none;
+
+        img.image:empty {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
-        a.star-link:hover {
-            color: white;
+
+        @media screen and (orientation: portrait) {
+            img.image {
+                max-width: 100%;
+            }
+            img.image:empty {
+                top: 40%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
         }
     </style>
 </head>
-<body>
-    <a href="https://bigmitzvah.org/">
+<body style="background-color:#000;">
+    <a href="https://bigmitzvah.org/images">
         <img class="image" src="logo.png" alt="BigMitzvah Logo" />
     </a>
-
-    <a href="/images" target="_blank" class="star-link">☆</a>
+    <a href="/images" target="_blank">☆</a>
 </body>
 </html>
