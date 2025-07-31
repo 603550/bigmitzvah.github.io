@@ -228,19 +228,21 @@
   });
 
   document.getElementById('kmYesBtn').addEventListener('click', () => {
-    document.getElementById('kmConfirmSection').style.display = "none";
-    document.getElementById('successSection').style.display = "block";
-    const now = new Date();
-    const bookingId = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${selectedDriver.id}-${enteredKM}`;
-    document.getElementById('successMessage').innerHTML = `
-      <hr>
-      Booking ID: ${bookingId}<br>
-      Start Time: ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}<br>
-      Starting KM: ${parseInt(enteredKM).toLocaleString()} KM<br>
-      Fees: $18 each day + $0.10 per KM<br><br>
-      <b>❤️ Have a great day ... do a Big Mitzvah!!</b>
-    `;
-  });
+  document.getElementById('kmConfirmSection').style.display = "none";
+  document.getElementById('successSection').style.display = "block";
+  const now = new Date();
+  const rentalId = `${String(now.getFullYear()).slice(-2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${selectedDriver.id}-${enteredKM}`;
+  document.getElementById('successMessage').innerHTML = `
+    <hr>
+    <p><strong>Driver:</strong> ${selectedDriver.firstname} ${selectedDriver.lastname} (${selectedDriver.id})</p>
+    <p><strong>Booking ID:</strong> ${rentalId}</p>
+    <p><strong>Start Time:</strong> ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</p>
+    <p><strong>Starting KM:</strong> ${parseInt(enteredKM).toLocaleString()} KM</p>
+    <p><strong>Fees:</strong> $18 each day + $0.10 per KM</p>
+    <br>
+    ❤️ Have a great day ... do a Big Mitzvah!!
+  `;
+});
 
   document.getElementById('kmNoBtn').addEventListener('click', () => {
     document.getElementById('kmConfirmSection').style.display = "none";
