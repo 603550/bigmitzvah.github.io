@@ -1,1 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BigMitzvah.org Car Gallery</title>
 
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      background-color: #000;
+      font-family: 'Libre Franklin', Arial, sans-serif;
+      color: white;
+    }
+    .logo {
+      display: block;
+      margin: 15px auto;
+      max-width: 300px;
+      cursor: pointer;
+    }
+    .gallery img {
+      border-radius: 12px;
+      margin-bottom: 20px;
+      max-width: 100%;
+      height: auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+    }
+    .container {
+      max-width: 600px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container text-center py-4">
+  <!-- Logo -->
+  <a href="/booking/index.html">
+    <img src="logo.png" alt="BigMitzvah Logo" class="logo">
+  </a>
+
+  <!-- Gallery -->
+  <div class="gallery">
+    <img src="images/BM01.jpeg" alt="Car Image 1">
+    <img src="images/BM02.jpeg" alt="Car Image 2">
+    <img src="images/BM03.jpeg" alt="Car Image 3">
+  </div>
+</div>
+
+</body>
+</html>
