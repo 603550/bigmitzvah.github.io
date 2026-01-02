@@ -60,12 +60,7 @@ global without sharing class BouncieWebhookService {
                 ts = safeParseIsoDatetime(String.valueOf(body.get('timestamp')), System.now());
             }
 
-            // Ignore stale (>10 min old)
-            if (ts < System.now().addMinutes(-10)) {
-                res.statusCode = 200;
-                res.responseBody = Blob.valueOf('{"status":"stale"}');
-                return;
-            }
+            // REMOVED: The "Stale" check. We want late data (tunnels, outages).
 
             // Dedup key: transaction + eventType + timestamp (seconds)
             String tsKey = String.valueOf(ts.getTime() / 1000);
