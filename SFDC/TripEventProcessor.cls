@@ -1,21 +1,12 @@
-public with sharing class TripEventProcessor implements Queueable {
+public without sharing class TripEventProcessor implements Queueable {
 
-    private final List<Id> eventIds;
+    private Set<Id> eventIds;
 
-    public TripEventProcessor(List<Id> eventIds) {
-        this.eventIds = (eventIds == null) ? new List<Id>() : eventIds;
+    public TripEventProcessor(Set<Id> ids) {
+        this.eventIds = (ids == null) ? new Set<Id>() : ids;
     }
 
-    public static void enqueue(List<Trip_Event__c> events) {
-        if (events == null || events.isEmpty()) return;
-
-        List<Id> ids = new List<Id>();
-        for (Trip_Event__c e : events) if (e.Id != null) ids.add(e.Id);
-
-        if (!ids.isEmpty()) System.enqueueJob(new TripEventProcessor(ids));
-    }
-
-    public void execute(QueueableContext context) {
-        TripEventHandler.process(eventIds);
+    public void execute(QueueableContext qc) {
+        TripEventService.process(eventIds);
     }
 }
