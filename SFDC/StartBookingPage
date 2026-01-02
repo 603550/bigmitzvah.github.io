@@ -1,0 +1,63 @@
+<apex:page standardController="Tanks__c" extensions="BookingController">
+    
+    <apex:sectionHeader title="Booking Manager" subtitle="{!Tanks__c.Name}"/>
+    <apex:pageMessages id="messages"/>
+
+    <!-- This main block will be re-rendered after the passcode is sent -->
+    <apex:pageBlock id="mainBlock">
+
+        <!-- Block 1: Shows if there is an active booking -->
+        <apex:pageBlock title="Active Booking Found" rendered="{!activeBooking != null}">
+            <apex:pageMessage severity="warning" strength="2" 
+                summary="This tank is already in use." 
+                detail="You cannot start a new booking until the current one is closed."/>
+            
+            <apex:pageBlockSection columns="1">
+                <apex:outputField label="Booking ID" value="{!activeBooking.Name}"/>
+                <apex:outputField label="Driver" value="{!activeBooking.Contact__r.Name}"/>
+                <apex:outputField label="Start Time" value="{!activeBooking.Start_Time__c}"/>
+            </apex:pageBlockSection>
+        </apex:pageBlock>
+
+        <!-- Block 2: Shows if tank is available -->
+        <apex:form rendered="{!activeBooking == null}">
+            <apex:pageBlock title="Start New Booking">
+                
+                <!-- This section shows BEFORE the passcode is sent -->
+                <apex:pageBlockSection columns="1" rendered="{!passcodeSent == false}">
+                    <apex:pageMessage severity="info" strength="3" 
+                        summary="This tank is available. Select a driver and send a passcode to begin."/>
+                    
+                    <apex:pageBlockSectionItem >
+                        <apex:outputLabel value="Select Driver" for="contactList"/>
+                        <apex:selectList id="contactList" value="{!selectedContactId}" size="1" required="true">
+                            <apex:selectOptions value="{!contactOptions}"/>
+                        </apex:selectList>
+                    </apex:pageBlockSectionItem>
+                </apex:pageBlockSection>
+
+                <!-- This section shows AFTER the passcode is sent -->
+                <apex:pageBlockSection columns="1" rendered="{!passcodeSent == true}">
+                     <apex:pageMessage severity="confirm" strength="3" 
+                        summary="Passcode sent!"
+                        detail="Please enter the 4-digit code sent to the driver's mobile phone."/>
+
+                    <apex:pageBlockSectionItem >
+                        <apex:outputLabel value="Enter Passcode" for="passcode"/>
+                        <apex:inputText id="passcode" value="{!enteredPasscode}" required="true"/>
+                    </apex:pageBlockSectionItem>
+                </apex:pageBlockSection>
+
+                <apex:pageBlockButtons >
+                    <!-- This button shows BEFORE passcode is sent -->
+                    <apex:commandButton value="Send Passcode" action="{!sendPasscode}" rendered="{!passcodeSent == false}" rerender="mainBlock, messages"/>
+                    
+                    <!-- This button shows AFTER passcode is sent -->
+                    <apex:commandButton value="Verify & Start Booking" action="{!startBooking}" rendered="{!passcodeSent == true}"/>
+                </apex:pageBlockButtons>
+                
+            </apex:pageBlock>
+        </apex:form>
+    </apex:pageBlock>
+    
+</apex:page>
