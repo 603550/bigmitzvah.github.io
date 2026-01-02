@@ -125,9 +125,8 @@ public with sharing class AddChargeController {
             Fuel_Rate__c = 0
         );
 
-        // 2. Map the Gas values if the setting exists
-        // (Make sure the API names on Charge__c match these exactly)
-        if (gasSettings != null) {
+        // 2. Map the Gas values (Includes safety check)
+        if (gasSettings != null && gasSettings.Id != null) {
             newCharge.Gas_Date__c = gasSettings.Gas_Date__c;
             newCharge.Gas_Price__c = gasSettings.Gas_Price__c;
             newCharge.Gas_Source__c = gasSettings.Gas_Source__c;
