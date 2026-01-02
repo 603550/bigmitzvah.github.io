@@ -102,13 +102,17 @@ public with sharing class CloseBookingController {
         Booking__c closedBooking = [
             SELECT Id, Contact__c, Admin__c, Start_Time__c, End_Time__c, 
                    Total_KM__c, Total_Days__c, Tank__c,
-                   KM_Start__c, KM_End__c // <--- ADD THIS
+                   KM_Start__c, KM_End__c 
             FROM Booking__c 
             WHERE Id = :bookingToClose.Id
         ];
         
         // 6. GENERATE CHARGE
         if (closedBooking.Admin__c == false) {
+            
+            // --- NEW: Retrieve Gas Settings ---
+            Gasoline__c gasSettings = Gasoline__c.getOrgDefaults();
+
             Charge__c newCharge = new Charge__c(
                 Booking__c    = closedBooking.Id,
                 Contact__c    = closedBooking.Contact__c,
@@ -123,10 +127,18 @@ public with sharing class CloseBookingController {
                 Total_Days__c = closedBooking.Total_Days__c,
                 Total_Fuel__c = fuelSum,
                 
-                // AUDIT TRAIL (Add these fields to Charge__c object first!)
+                // AUDIT TRAIL
                 KM_Start__c   = closedBooking.KM_Start__c,
                 KM_End__c     = closedBooking.KM_End__c
             );
+
+            // --- NEW: Map Gas Fields ---
+            if (gasSettings != null && gasSettings.Id != null) {
+                newCharge.Gas_Date__c = gasSettings.Gas_Date__c;
+                newCharge.Gas_Price__c = gasSettings.Gas_Price__c;
+                newCharge.Gas_Source__c = gasSettings.Gas_Source__c;
+            }
+
             insert newCharge;
 
             // Feedback SMS
