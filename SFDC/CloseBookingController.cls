@@ -98,10 +98,11 @@ public with sharing class CloseBookingController {
         Decimal fuelSum = (Decimal)tripResults[0].get('totalFuel');
         if (fuelSum == null) fuelSum = 0;
 
-        // 5. Re-Query Booking to get the Calculated Formula Values
+        // 5. Re-Query Booking (Added KM_Start__c and KM_End__c)
         Booking__c closedBooking = [
             SELECT Id, Contact__c, Admin__c, Start_Time__c, End_Time__c, 
-                   Total_KM__c, Total_Days__c, Tank__c
+                   Total_KM__c, Total_Days__c, Tank__c,
+                   KM_Start__c, KM_End__c // <--- ADD THIS
             FROM Booking__c 
             WHERE Id = :bookingToClose.Id
         ];
@@ -118,9 +119,13 @@ public with sharing class CloseBookingController {
                 Expense__c    = 0,
                 
                 // MAPPING VALUES
-                KM_Total__c   = closedBooking.Total_KM__c,   // Formula from Booking
-                Total_Days__c = closedBooking.Total_Days__c, // Formula from Booking
-                Total_Fuel__c = fuelSum                      // Calculated via Apex
+                KM_Total__c   = closedBooking.Total_KM__c, 
+                Total_Days__c = closedBooking.Total_Days__c,
+                Total_Fuel__c = fuelSum,
+                
+                // AUDIT TRAIL (Add these fields to Charge__c object first!)
+                KM_Start__c   = closedBooking.KM_Start__c,
+                KM_End__c     = closedBooking.KM_End__c
             );
             insert newCharge;
 
