@@ -1,0 +1,35 @@
+<apex:page standardController="Tanks__c" extensions="CloseBookingController">
+
+    <apex:sectionHeader title="Close Booking" subtitle="Tank: {!Tanks__c.Name}"/>
+    
+    <apex:form >
+        <apex:pageMessages id="messages"/>
+
+        <!-- This main block will be re-rendered to show/hide the passcode field -->
+        <apex:pageBlock id="mainBlock">
+            
+            <!-- CORRECT PLACEMENT: Buttons are a direct child of pageBlock -->
+            <apex:pageBlockButtons location="top">
+                <!-- This button shows BEFORE the passcode is sent -->
+                <apex:commandButton value="Send Passcode to Admins" action="{!sendPasscode}" rendered="{!passcodeSent == false}" rerender="mainBlock, messages"/>
+                
+                <!-- This button shows AFTER the passcode is sent -->
+                <apex:commandButton value="Verify & Close Booking" action="{!verifyAndCloseBooking}" rendered="{!passcodeSent == true}"/>
+            </apex:pageBlockButtons>
+
+            <!-- This section shows AFTER the passcode is sent -->
+            <apex:pageBlockSection title="Verification" columns="1" rendered="{!passcodeSent == true}">
+                <apex:pageMessage severity="confirm" strength="3" 
+                    summary="Passcode Sent"
+                    detail="Please enter the 4-digit code sent to all system administrators to authorize this action."/>
+                
+                <apex:pageBlockSectionItem >
+                    <apex:outputLabel value="Enter Passcode" for="passcode"/>
+                    <apex:inputText id="passcode" value="{!enteredPasscode}" required="true"/>
+                </apex:pageBlockSectionItem>
+            </apex:pageBlockSection>
+
+        </apex:pageBlock>
+    </apex:form>
+
+</apex:page>
