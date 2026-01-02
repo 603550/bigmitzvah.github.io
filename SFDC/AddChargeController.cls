@@ -6,7 +6,7 @@ public with sharing class AddChargeController {
     public Boolean passcodeSent { get; set; }
     public Boolean isAdminVerified { get; set; }
     public Boolean bookingFound { get; set; }
-    public Boolean isAdminBookingFound { get; set; } // --- NEW PROPERTY ---
+    public Boolean isAdminBookingFound { get; set; } 
 
     // Properties for the charge details
     public Datetime chargeDateTime { get; set; }
@@ -20,7 +20,7 @@ public with sharing class AddChargeController {
         this.passcodeSent = false;
         this.isAdminVerified = false;
         this.bookingFound = false;
-        this.isAdminBookingFound = false; // --- INITIALIZE NEW PROPERTY ---
+        this.isAdminBookingFound = false; 
     }
 
     // --- Step 1: Send Passcode to Admins ---
@@ -81,16 +81,19 @@ public with sharing class AddChargeController {
 
         if (!bookings.isEmpty()) {
             this.foundBooking = bookings[0];
-            this.isAdminBookingFound = false; // --- SET FLAG FOR CUSTOMER BOOKING ---
+            this.isAdminBookingFound = false; 
         } else {
-            // If no customer booking is found, fall back to the Admin booking
+            // If no customer booking is found, fall back to the Admin booking FOR THIS TANK
             List<Booking__c> adminBookings = [
                 SELECT Id, Name, Contact__r.Name, Contact__r.MobilePhone, Tank__r.Name 
-                FROM Booking__c WHERE Admin__c = TRUE LIMIT 1
+                FROM Booking__c 
+                WHERE Admin__c = TRUE 
+                AND Tank__c = :this.tankId  // <--- FIXED: Only get admin booking for THIS tank
+                LIMIT 1
             ];
             if (!adminBookings.isEmpty()) {
                 this.foundBooking = adminBookings[0];
-                this.isAdminBookingFound = true; // --- SET FLAG FOR ADMIN BOOKING ---
+                this.isAdminBookingFound = true; 
             }
         }
         
