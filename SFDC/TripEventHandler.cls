@@ -1,3 +1,13 @@
+        // DELETED FILE
+        // DELETED FILE
+        // DELETED FILE
+        // DELETED FILE
+        // DELETED FILE
+        // DELETED FILE
+        // DELETED FILE
+        // DELETED FILE
+        // DELETED FILE
+
 public with sharing class TripEventHandler {
 
     public static void process(List<Id> eventIds) {
