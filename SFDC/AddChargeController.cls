@@ -88,7 +88,7 @@ public with sharing class AddChargeController {
                 SELECT Id, Name, Contact__r.Name, Contact__r.MobilePhone, Tank__r.Name 
                 FROM Booking__c 
                 WHERE Admin__c = TRUE 
-                AND Tank__c = :this.tankId  // <--- FIXED: Only get admin booking for THIS tank
+                AND Tank__c = :this.tankId
                 LIMIT 1
             ];
             if (!adminBookings.isEmpty()) {
@@ -106,6 +106,9 @@ public with sharing class AddChargeController {
 
     // --- Step 4: Create the Charge Record ---
     public PageReference createCharge() {
+        // 1. Retrieve the Custom Setting Data
+        Gasoline__c gasSettings = Gasoline__c.getOrgDefaults();
+
         Charge__c newCharge = new Charge__c(
             Booking__c = this.foundBooking.Id,
             Contact__c = this.foundBooking.Contact__c,
@@ -121,6 +124,15 @@ public with sharing class AddChargeController {
             Day_Rate__c = 0,
             Fuel_Rate__c = 0
         );
+
+        // 2. Map the Gas values if the setting exists
+        // (Make sure the API names on Charge__c match these exactly)
+        if (gasSettings != null) {
+            newCharge.Gas_Date__c = gasSettings.Gas_Date__c;
+            newCharge.Gas_Price__c = gasSettings.Gas_Price__c;
+            newCharge.Gas_Source__c = gasSettings.Gas_Source__c;
+        }
+
         insert newCharge;
 
         return new PageReference('/' + this.tankId);
