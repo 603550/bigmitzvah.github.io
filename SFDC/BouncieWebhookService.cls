@@ -7,173 +7,131 @@ global without sharing class BouncieWebhookService {
     private static final Decimal GAL_TO_LITERS = 3.78541;
     private static final Decimal SECONDS_TO_MINUTES = 1.0 / 60.0;
 
-    // Ignore events older than this (minutes)
-    private static final Integer MAX_EVENT_AGE_MIN = 10;
-
     @HttpPost
     global static void handleWebhook() {
+
         RestRequest req = RestContext.request;
         RestResponse res = RestContext.response;
+
+        // ALWAYS respond quickly; Bouncie retries when it doesn't like responses
         res.addHeader('Content-Type', 'application/json');
 
-        // Always respond quickly; only 401 for bad key.
-        if (!isAuthorized(req)) {
-            res.statusCode = 401;
-            res.responseBody = Blob.valueOf('{"status":"unauthorized"}');
+        // ---- AUTH (ALWAYS 200 even if wrong) ----
+        String key = req.headers.get('x-bouncie-authorization');
+        if (String.isBlank(key)) key = req.headers.get('x-api-key');
+        if (String.isBlank(key)) key = req.headers.get('Authorization');
+
+        Bouncie_Settings__c cfg = Bouncie_Settings__c.getOrgDefaults();
+        if (cfg == null || String.isBlank(cfg.Bouncie_Webhook_Key__c) || key != cfg.Bouncie_Webhook_Key__c) {
+            res.statusCode = 200;
+            res.responseBody = Blob.valueOf('{"status":"ignored"}');
             return;
         }
 
         try {
-            String rawBody = (req.requestBody == null) ? '' : req.requestBody.toString();
-            if (String.isBlank(rawBody)) {
-                // Do not trigger retries for empty bodies; just accept.
-                res.statusCode = 200;
-                res.responseBody = Blob.valueOf('{"status":"ok","note":"empty body"}');
-                return;
-            }
+            String raw = (req.requestBody == null) ? '' : req.requestBody.toString();
+            Map<String,Object> root = (Map<String,Object>) JSON.deserializeUntyped(raw);
 
-            Map<String, Object> root = (Map<String, Object>) JSON.deserializeUntyped(rawBody);
-            Map<String, Object> data = (root != null && root.containsKey('payload'))
-                ? (Map<String, Object>) root.get('payload')
+            Map<String,Object> p = root.containsKey('payload')
+                ? (Map<String,Object>) root.get('payload')
                 : root;
 
-            if (data == null) {
+            String eventType = (p.get('eventType') == null) ? null : String.valueOf(p.get('eventType'));
+            String txn       = (p.get('transactionId') == null) ? null : String.valueOf(p.get('transactionId'));
+            String vin       = (p.get('vin') == null) ? null : String.valueOf(p.get('vin'));
+            String imei      = (p.get('imei') == null) ? null : String.valueOf(p.get('imei'));
+
+            if (String.isBlank(eventType) || String.isBlank(txn)) {
                 res.statusCode = 200;
-                res.responseBody = Blob.valueOf('{"status":"ok","note":"no payload"}');
+                res.responseBody = Blob.valueOf('{"status":"ignored","reason":"missing eventType/transactionId"}');
                 return;
             }
 
-            String eventType     = getString(data, 'eventType');
-            String transactionId = getString(data, 'transactionId');
-            String vin           = getString(data, 'vin');
-            String imei          = getString(data, 'imei');
+            // pull sub-object
+            Map<String,Object> body;
+            if (eventType == 'tripStart')      body = (Map<String,Object>) p.get('start');
+            else if (eventType == 'tripEnd')   body = (Map<String,Object>) p.get('end');
+            else if (eventType == 'tripMetrics') body = (Map<String,Object>) p.get('metrics');
+            else body = null;
 
-            // Missing core identifiers -> accept but do nothing (prevents retries).
-            if (String.isBlank(eventType) || String.isBlank(transactionId)) {
+            // parse timestamp safely
+            Datetime ts = System.now();
+            if (body != null && body.get('timestamp') != null) {
+                ts = safeParseIsoDatetime(String.valueOf(body.get('timestamp')), System.now());
+            }
+
+            // Ignore stale (>10 min old)
+            if (ts < System.now().addMinutes(-10)) {
                 res.statusCode = 200;
-                res.responseBody = Blob.valueOf('{"status":"ok","note":"missing eventType/transactionId"}');
+                res.responseBody = Blob.valueOf('{"status":"stale"}');
                 return;
             }
 
-            // Pull sub-object by type
-            Map<String, Object> subMap;
-            if (eventType == 'tripStart')       subMap = (Map<String, Object>) data.get('start');
-            else if (eventType == 'tripEnd')    subMap = (Map<String, Object>) data.get('end');
-            else if (eventType == 'tripMetrics')subMap = (Map<String, Object>) data.get('metrics');
-            else                                subMap = null;
-
-            Datetime eventTime = extractTimestamp(subMap);
-            if (eventTime == null) eventTime = System.now();
-
-            // Ignore old events (but return 200 to stop retries)
-            if (eventTime < System.now().addMinutes(-MAX_EVENT_AGE_MIN)) {
-                res.statusCode = 200;
-                res.responseBody = Blob.valueOf('{"status":"ok","note":"ignored old event"}');
-                return;
-            }
-
-            // Build dedupe key: txn|type|yyyyMMddHHmmss (GMT)
-            String tsKey = eventTime.formatGmt('yyyyMMddHHmmss');
-            String eventKey = transactionId + '|' + eventType + '|' + tsKey;
+            // Dedup key: transaction + eventType + timestamp (seconds)
+            String tsKey = String.valueOf(ts.getTime() / 1000);
+            String eventKey = txn + '|' + eventType + '|' + tsKey;
 
             Trip_Event__c ev = new Trip_Event__c();
-            ev.Event_Key__c      = eventKey;
-            ev.Processed__c      = false;
-            ev.transactionId__c  = transactionId;
-            ev.eventType__c      = eventType;
-            ev.VIN__c            = vin;
-            ev.imei__c           = imei;
-            ev.timestamp__c      = eventTime;
+            ev.Transaction__c = txn;
+            ev.Event_Key__c   = eventKey;
+            ev.eventType__c   = eventType;
+            ev.VIN__c         = vin;
+            ev.imei__c        = imei;
+            ev.timestamp__c   = ts;
+            ev.Processed__c   = false;
 
-            // Map fields
-            if (subMap != null) {
-                if (eventType == 'tripStart' || eventType == 'tripEnd') {
-                    // Odometer (miles -> km)
-                    Decimal odo = getDecimal(subMap, 'odometer');
-                    if (odo != null) ev.odometer__c = odo * MILES_TO_KM;
+            if (body != null) {
+                // odometer miles -> km
+                if (body.get('odometer') != null) {
+                    ev.odometer__c = Decimal.valueOf(String.valueOf(body.get('odometer'))) * MILES_TO_KM;
+                }
 
-                    // Fuel (gallons -> litres) on tripEnd
-                    if (eventType == 'tripEnd') {
-                        Decimal fuel = getDecimal(subMap, 'fuelConsumed');
-                        if (fuel != null) ev.fuelConsumed__c = fuel * GAL_TO_LITERS;
-                    }
+                // fuel gallons -> litres (tripEnd commonly)
+                if (body.get('fuelConsumed') != null) {
+                    ev.fuelConsumed__c = Decimal.valueOf(String.valueOf(body.get('fuelConsumed'))) * GAL_TO_LITERS;
                 }
 
                 if (eventType == 'tripMetrics') {
-                    Decimal dist = getDecimal(subMap, 'tripDistance');
-                    if (dist != null) ev.Trip_KM__c = (dist * MILES_TO_KM).setScale(1);
-
-                    Decimal tripSec = getDecimal(subMap, 'tripTime');
-                    if (tripSec != null) ev.Trip_Time__c = (tripSec * SECONDS_TO_MINUTES).setScale(1);
-
-                    Decimal idleSec = getDecimal(subMap, 'totalIdlingTime');
-                    if (idleSec != null) ev.Idle_Time__c = (idleSec * SECONDS_TO_MINUTES).setScale(1);
-
-                    Decimal maxMph = getDecimal(subMap, 'maxSpeed');
-                    if (maxMph != null) ev.Max_Speed__c = (maxMph * MPH_TO_KMH).setScale(0);
-
-                    Decimal avgMph = getDecimal(subMap, 'averageDriveSpeed');
-                    if (avgMph != null) ev.Avg_Speed__c = (avgMph * MPH_TO_KMH).setScale(0);
-
-                    Integer brakes = getInteger(subMap, 'hardBrakingCounts');
-                    if (brakes != null) ev.Hard_Brakes__c = brakes;
-
-                    Integer accel = getInteger(subMap, 'hardAccelerationCounts');
-                    if (accel != null) ev.Hard_Accel__c = accel;
+                    if (body.get('tripDistance') != null) {
+                        ev.Trip_KM__c = Decimal.valueOf(String.valueOf(body.get('tripDistance'))) * MILES_TO_KM;
+                    }
+                    if (body.get('tripTime') != null) {
+                        ev.Trip_Time__c = (Decimal.valueOf(String.valueOf(body.get('tripTime'))) * SECONDS_TO_MINUTES).setScale(1);
+                    }
+                    if (body.get('totalIdlingTime') != null) {
+                        ev.Idle_Time__c = (Decimal.valueOf(String.valueOf(body.get('totalIdlingTime'))) * SECONDS_TO_MINUTES).setScale(1);
+                    }
+                    if (body.get('maxSpeed') != null) {
+                        ev.Max_Speed__c = (Decimal.valueOf(String.valueOf(body.get('maxSpeed'))) * MPH_TO_KMH).setScale(0);
+                    }
+                    if (body.get('averageDriveSpeed') != null) {
+                        ev.Avg_Speed__c = (Decimal.valueOf(String.valueOf(body.get('averageDriveSpeed'))) * MPH_TO_KMH).setScale(0);
+                    }
+                    if (body.get('hardBrakingCounts') != null) {
+                        ev.Hard_Brakes__c = Integer.valueOf(String.valueOf(body.get('hardBrakingCounts')));
+                    }
+                    if (body.get('hardAccelerationCounts') != null) {
+                        ev.Hard_Accel__c = Integer.valueOf(String.valueOf(body.get('hardAccelerationCounts')));
+                    }
                 }
             }
 
-            // Upsert by Event_Key__c (dedupe)
+            // Upsert event by unique external key (prevents duplicate rows)
             upsert ev Event_Key__c;
 
-            // Always return 200 OK (Bouncie retry suppression)
-            res.statusCode = 200;
-            res.responseBody = Blob.valueOf('{"status":"ok"}');
-
-        } catch (Exception ex) {
-            // Still return 200 to avoid repeated retries; log for diagnosis.
-            System.debug('BOUNCIE ERROR => ' + ex.getMessage() + ' | ' + ex.getStackTraceString());
-            res.statusCode = 200;
-            res.responseBody = Blob.valueOf('{"status":"ok","note":"exception logged"}');
+        } catch (Exception ignore) {
+            // intentionally swallow; we always respond 200 below
         }
+
+        res.statusCode = 200;
+        res.responseBody = Blob.valueOf('{"status":"ok"}');
     }
 
-    // ---------------- Helpers ----------------
-
-    private static Boolean isAuthorized(RestRequest req) {
-        String apiKey = req.headers.get('x-bouncie-authorization');
-        if (String.isBlank(apiKey)) apiKey = req.headers.get('x-api-key');
-        if (String.isBlank(apiKey)) apiKey = req.headers.get('Authorization');
-
-        Bouncie_Settings__c settings = Bouncie_Settings__c.getOrgDefaults();
-        String expectedKey = (settings != null) ? settings.Bouncie_Webhook_Key__c : null;
-
-        return (!String.isBlank(apiKey) && !String.isBlank(expectedKey) && apiKey == expectedKey);
-    }
-
-    private static String getString(Map<String, Object> m, String key) {
-        return (m != null && m.containsKey(key) && m.get(key) != null) ? String.valueOf(m.get(key)) : null;
-    }
-
-    private static Decimal getDecimal(Map<String, Object> m, String key) {
-        if (m == null || !m.containsKey(key) || m.get(key) == null) return null;
-        try { return Decimal.valueOf(String.valueOf(m.get(key))); }
-        catch (Exception e) { return null; }
-    }
-
-    private static Integer getInteger(Map<String, Object> m, String key) {
-        if (m == null || !m.containsKey(key) || m.get(key) == null) return null;
-        try { return Integer.valueOf(String.valueOf(m.get(key))); }
-        catch (Exception e) { return null; }
-    }
-
-    private static Datetime extractTimestamp(Map<String, Object> subMap) {
-        if (subMap == null || subMap.get('timestamp') == null) return null;
+    private static Datetime safeParseIsoDatetime(String iso, Datetime fallback) {
         try {
-            // timestamp is usually ISO8601 string
-            return (Datetime) JSON.deserialize('"' + String.valueOf(subMap.get('timestamp')) + '"', Datetime.class);
+            return (Datetime) JSON.deserialize('"' + iso + '"', Datetime.class);
         } catch (Exception e) {
-            return null;
+            return fallback;
         }
     }
 }
