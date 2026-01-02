@@ -42,20 +42,18 @@ global without sharing class BouncieWebhookService {
             }
 
             // =================================================================================
-            // LIVE TRACKING LOGIC (tripData)
+            // LIVE TRACKING LOGIC (tripData) - Updates the TANK record
             // =================================================================================
             if (eventType == 'tripData') {
                 List<Object> dataList = (List<Object>) p.get('data');
                 
                 if (dataList != null && !dataList.isEmpty() && vin != null) {
-                    // 1. WHICH GPS? Using the VERY LAST point (most recent)
                     Map<String,Object> latestPoint = (Map<String,Object>) dataList[dataList.size() - 1];
                     Map<String,Object> gps = (Map<String,Object>) latestPoint.get('gps');
                     
                     Double lat = (gps != null) ? (Double) gps.get('lat') : null;
                     Double lon = (gps != null) ? (Double) gps.get('lon') : null;
                     
-                    // 2. SCAN ALL POINTS for Fuel (Extracting from any index, like index 4)
                     Decimal foundFuel = null;
                     for (Object obj : dataList) {
                         Map<String,Object> pt = (Map<String,Object>) obj;
@@ -64,35 +62,24 @@ global without sharing class BouncieWebhookService {
                         }
                     }
 
-                    // 3. GET TIMESTAMP: From the latest GPS point
                     Datetime liveTimestamp = System.now();
                     if (latestPoint.get('timestamp') != null) {
                         liveTimestamp = (Datetime) JSON.deserialize('"' + String.valueOf(latestPoint.get('timestamp')) + '"', Datetime.class);
                     }
 
-                    // 4. UPDATE TANK (Including Fuel Low Logic)
                     List<Tanks__c> tankToUpdate = [SELECT Id, Fuel_Limit__c FROM Tanks__c WHERE VIN__c = :vin LIMIT 1];
                     if (!tankToUpdate.isEmpty()) {
                         Tanks__c t = tankToUpdate[0];
-                        
-                        // Update Location
                         if (lat != null && lon != null) {
                             t.Location__Latitude__s = lat;
                             t.Location__Longitude__s = lon;
                         }
-                        
-                        // Consolidated Timestamp field
                         t.Last_Use__c = liveTimestamp; 
-
-                        // Fuel Logic
                         if (foundFuel != null) {
                             t.Fuel_Level__c = foundFuel;
-                            
-                            // Check against custom limit (defaults to 15 if not set)
                             Decimal limitVal = (t.Fuel_Limit__c != null) ? t.Fuel_Limit__c : 15.0;
                             t.Fuel_Low__c = (foundFuel <= limitVal); 
                         }
-                        
                         update t;
                     }
                 }
@@ -100,12 +87,13 @@ global without sharing class BouncieWebhookService {
                 res.responseBody = Blob.valueOf('{"status":"ok", "action":"live_update"}');
                 return; 
             }
-            // =================================================================================
 
-            // HISTORICAL DATA HANDLING
+            // =================================================================================
+            // HISTORICAL & EVENT LOGIC (tripStart, tripEnd, tripMetrics)
+            // =================================================================================
             Map<String,Object> body;
             if (eventType == 'tripStart')      body = (Map<String,Object>) p.get('start');
-            else if (eventType == 'tripEnd')   body = (Map<String,Object>) p.get('end');
+            else if (eventType == 'tripEnd')    body = (Map<String,Object>) p.get('end');
             else if (eventType == 'tripMetrics') body = (Map<String,Object>) p.get('metrics');
 
             if (body == null) {
@@ -114,6 +102,31 @@ global without sharing class BouncieWebhookService {
                 return;
             }
 
+            // 1. Get the Current Tank State for this VIN
+            Tanks__c currentTank = [SELECT Id, Location__Latitude__s, Location__Longitude__s FROM Tanks__c WHERE VIN__c = :vin LIMIT 1];
+
+            // 2. Handle the Trip__c record updates (Start/Stop Locations)
+            if (eventType == 'tripStart') {
+                Trip__c newTrip = new Trip__c(
+                    Tank__c = currentTank.Id,
+                    Bouncie_Trip_Id__c = txn,
+                    Start_Time__c = System.now(),
+                    Location_Start__Latitude__s = currentTank.Location__Latitude__s,
+                    Location_Start__Longitude__s = currentTank.Location__Longitude__s
+                );
+                insert newTrip;
+            } 
+            else if (eventType == 'tripEnd') {
+                List<Trip__c> trips = [SELECT Id FROM Trip__c WHERE Bouncie_Trip_Id__c = :txn LIMIT 1];
+                if (!trips.isEmpty()) {
+                    trips[0].End_Time__c = System.now();
+                    trips[0].Location_Stop__Latitude__s = currentTank.Location__Latitude__s;
+                    trips[0].Location_Stop__Longitude__s = currentTank.Location__Longitude__s;
+                    update trips[0];
+                }
+            }
+
+            // 3. Keep your existing Trip_Event__c logging for reporting
             Datetime ts = System.now();
             if (body.get('timestamp') != null) {
                 ts = (Datetime) JSON.deserialize('"' + String.valueOf(body.get('timestamp')) + '"', Datetime.class);
@@ -137,7 +150,7 @@ global without sharing class BouncieWebhookService {
                 if (body.get('tripDistance') != null) ev.Trip_KM__c = Decimal.valueOf(String.valueOf(body.get('tripDistance'))) * MILES_TO_KM;
                 if (body.get('tripTime') != null)     ev.Trip_Time__c = (Decimal.valueOf(String.valueOf(body.get('tripTime'))) * SECONDS_TO_MINUTES).setScale(1);
                 if (body.get('totalIdlingTime') != null) ev.Idle_Time__c = (Decimal.valueOf(String.valueOf(body.get('totalIdlingTime'))) * SECONDS_TO_MINUTES).setScale(1);
-                if (body.get('maxSpeed') != null)     ev.Max_Speed__c = (Decimal.valueOf(String.valueOf(body.get('maxSpeed'))) * MPH_TO_KMH).setScale(0);
+                if (body.get('maxSpeed') != null)      ev.Max_Speed__c = (Decimal.valueOf(String.valueOf(body.get('maxSpeed'))) * MPH_TO_KMH).setScale(0);
                 if (body.get('averageDriveSpeed') != null) ev.Avg_Speed__c = (Decimal.valueOf(String.valueOf(body.get('averageDriveSpeed'))) * MPH_TO_KMH).setScale(0);
                 if (body.get('hardBrakingCounts') != null) ev.Hard_Brakes__c = Integer.valueOf(String.valueOf(body.get('hardBrakingCounts')));
                 if (body.get('hardAccelerationCounts') != null) ev.Hard_Accel__c = Integer.valueOf(String.valueOf(body.get('hardAccelerationCounts')));
