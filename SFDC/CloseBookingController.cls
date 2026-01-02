@@ -1,30 +1,30 @@
-public with sharing class AddChargeController {
+public with sharing class CloseBookingController {
 
     // Properties for the page state
-    public Id tankId { get; private set; }
+    private final Tanks__c tank;
     public String enteredPasscode { get; set; }
     public Boolean passcodeSent { get; set; }
-    public Boolean isAdminVerified { get; set; }
-    public Boolean bookingFound { get; set; }
-    public Boolean isAdminBookingFound { get; set; } 
-
-    // Properties for the charge details
-    public Datetime chargeDateTime { get; set; }
-    public Decimal chargeAmount { get; set; }
-    public String chargeDescription { get; set; }
-    public Booking__c foundBooking { get; set; }
 
     // Constructor
-    public AddChargeController(ApexPages.StandardController controller) {
-        this.tankId = controller.getId();
+    public CloseBookingController(ApexPages.StandardController controller) {
+        this.tank = (Tanks__c)controller.getRecord();
         this.passcodeSent = false;
-        this.isAdminVerified = false;
-        this.bookingFound = false;
-        this.isAdminBookingFound = false; 
     }
 
-    // --- Step 1: Send Passcode to Admins ---
+    // --- Step 1: Send Passcode to All Admins ---
     public void sendPasscode() {
+        // Validation: Don't allow closing if there is an Active Trip currently running
+        List<Trip__c> activeTrips = [
+            SELECT Id FROM Trip__c 
+            WHERE Booking__r.Tank__c = :tank.Id AND Booking__r.Active__c = TRUE AND Active__c = TRUE 
+            LIMIT 1
+        ];
+
+        if (!activeTrips.isEmpty()) {
+            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Error: This booking cannot be closed because there is currently an ACTIVE trip running. Please wait for the car to stop.'));
+            return;
+        }
+
         List<Contact> admins = [SELECT Id, MobilePhone FROM Contact WHERE Admin__c = TRUE AND MobilePhone != null];
 
         if (admins.isEmpty()) {
@@ -32,115 +32,130 @@ public with sharing class AddChargeController {
             return;
         }
 
+        // Generate 4-digit code
         String passcode = String.valueOf(Integer.valueOf(Math.random() * 9000) + 1000);
         
+        List<Contact> contactsToUpdate = new List<Contact>();
         for (Contact admin : admins) {
             admin.OTP__c = passcode;
             admin.OTP_Exipre__c = System.now().addMinutes(5);
+            contactsToUpdate.add(admin);
         }
-        update admins;
+        update contactsToUpdate;
 
+        // Send SMS to all Admins
         for (Contact admin : admins) {
-            TwilioService.sendSms(admin.MobilePhone, 'A request to add a new charge requires verification. The passcode is: ' + passcode);
+            // Assuming TwilioService is your utility class for sending SMS
+            TwilioService.sendSms(admin.MobilePhone, 'Request to CLOSE booking for ' + tank.Name + '. Code: ' + passcode);
         }
-
-        this.passcodeSent = true;
-        ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.CONFIRM, 'A passcode has been sent to all administrators.'));
+        
+        passcodeSent = true;
+        ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.CONFIRM, 'A verification passcode has been sent to all administrators.'));
     }
 
-    // --- Step 2: Verify the Admin's Passcode ---
-    public void verifyPasscode() {
+    // --- Step 2: Verify Passcode and Close the Booking ---
+    public PageReference verifyAndCloseBooking() {
+        // 1. Validate Passcode
         List<Contact> matchingAdmins = [
             SELECT Id FROM Contact 
-            WHERE Admin__c = TRUE 
-            AND OTP__c = :enteredPasscode 
-            AND OTP_Exipre__c > :System.now()
+            WHERE Admin__c = TRUE AND OTP__c = :enteredPasscode AND OTP_Exipre__c > :System.now()
             LIMIT 1
         ];
 
         if (matchingAdmins.isEmpty()) {
             ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Invalid or expired passcode. Please try again.'));
-            this.passcodeSent = false;
-        } else {
-            this.isAdminVerified = true;
+            return null;
         }
-    }
-    
-    // --- Step 3: Find the Correct Booking ---
-    public void findBookingAndConfirm() {
-        // Find a customer booking that was active during the specified time
-        List<Booking__c> bookings = [
-            SELECT Id, Name, Contact__r.Name, Contact__r.MobilePhone, Tank__r.Name, Admin__c 
-            FROM Booking__c 
-            WHERE Tank__c = :this.tankId 
-            AND Start_Time__c <= :chargeDateTime 
-            AND End_Time__c >= :chargeDateTime 
-            AND Admin__c = FALSE
-            LIMIT 1
-        ];
 
-        if (!bookings.isEmpty()) {
-            this.foundBooking = bookings[0];
-            this.isAdminBookingFound = false; 
-        } else {
-            // If no customer booking is found, fall back to the Admin booking FOR THIS TANK
-            List<Booking__c> adminBookings = [
-                SELECT Id, Name, Contact__r.Name, Contact__r.MobilePhone, Tank__r.Name 
-                FROM Booking__c 
-                WHERE Admin__c = TRUE 
-                AND Tank__c = :this.tankId
-                LIMIT 1
-            ];
-            if (!adminBookings.isEmpty()) {
-                this.foundBooking = adminBookings[0];
-                this.isAdminBookingFound = true; 
-            }
+        List<Booking__c> activeBookings = [SELECT Id, Contact__r.MobilePhone, Start_Time__c FROM Booking__c WHERE Tank__c = :tank.Id AND Active__c = TRUE LIMIT 1];
+        if (activeBookings.isEmpty()) {
+            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO, 'There is no active booking for this tank to close.'));
+            return null;
         }
         
-        if (this.foundBooking != null) {
-            this.bookingFound = true;
-        } else {
-            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'No active booking (customer or admin) could be found for the specified date and time.'));
-        }
-    }
+        // 2. Close the Booking
+        // We update End_Time__c and KM_End__c. This triggers your Formula Fields to recalculate.
+        Tanks__c currentTankState = [SELECT KM__c FROM Tanks__c WHERE Id = :tank.Id];
+        Booking__c bookingToClose = activeBookings[0];
+        
+        bookingToClose.Active__c = false;
+        bookingToClose.End_Time__c = System.now();
+        bookingToClose.Status__c = 'Closed';
+        bookingToClose.KM_End__c = currentTankState.KM__c;
+        
+        update bookingToClose; // <--- Formulas (Total_Days__c, Total_KM__c) update here
 
-    // --- Step 4: Create the Charge Record ---
-    public PageReference createCharge() {
-        // 1. Retrieve the Custom Setting Data
-        Gasoline__c gasSettings = Gasoline__c.getOrgDefaults();
+        // 3. Re-Open the Tank
+        Tanks__c tankToUpdate = new Tanks__c(Id = tank.Id, Status__c = 'Open');
+        update tankToUpdate;
 
-        Charge__c newCharge = new Charge__c(
-            Booking__c = this.foundBooking.Id,
-            Contact__c = this.foundBooking.Contact__c,
-            Tank__c = this.tankId,
-            Start_Time__c = this.chargeDateTime,
-            End_Time__c = this.chargeDateTime,
-            Expense__c = this.chargeAmount,
-            Description__c = this.chargeDescription,
-            Type__c = 'Expense',
-            Status__c = 'Unpaid',
-            KM_Total__c = 0,
-            Total_Fuel__c = 0,
-            Day_Rate__c = 0,
-            Fuel_Rate__c = 0
-        );
+        // 4. Calculate Total Fuel (Summing Trip records via Apex)
+        AggregateResult[] tripResults = [
+            SELECT SUM(Total_Fuel__c) totalFuel 
+            FROM Trip__c 
+            WHERE Booking__c = :bookingToClose.Id
+        ];
+        Decimal fuelSum = (Decimal)tripResults[0].get('totalFuel');
+        if (fuelSum == null) fuelSum = 0;
 
-        // 2. Map the Gas values AND Fuel Rate
-        if (gasSettings != null && gasSettings.Id != null) {
-            newCharge.Gas_Date__c = gasSettings.Gas_Date__c;
-            newCharge.Gas_Price__c = gasSettings.Gas_Price__c;
-            newCharge.Gas_Source__c = gasSettings.Gas_Source__c;
+        // 5. Re-Query Booking (Added KM_Start__c and KM_End__c)
+        Booking__c closedBooking = [
+            SELECT Id, Contact__c, Admin__c, Start_Time__c, End_Time__c, 
+                   Total_KM__c, Total_Days__c, Tank__c,
+                   KM_Start__c, KM_End__c 
+            FROM Booking__c 
+            WHERE Id = :bookingToClose.Id
+        ];
+        
+        // 6. GENERATE CHARGE
+        if (closedBooking.Admin__c == false) {
             
-            // UPDATE FUEL RATE
-            newCharge.Fuel_Rate__c = gasSettings.Gas_Price__c; 
+            // --- NEW: Retrieve Gas Settings ---
+            Gasoline__c gasSettings = Gasoline__c.getOrgDefaults();
+
+            Charge__c newCharge = new Charge__c(
+                Booking__c    = closedBooking.Id,
+                Contact__c    = closedBooking.Contact__c,
+                Start_Time__c = closedBooking.Start_Time__c,
+                End_Time__c   = closedBooking.End_Time__c,
+                Tank__c       = closedBooking.Tank__c,
+                Type__c       = 'Booking',
+                Expense__c    = 0,
+                
+                // MAPPING VALUES
+                KM_Total__c   = closedBooking.Total_KM__c, 
+                Total_Days__c = closedBooking.Total_Days__c,
+                Total_Fuel__c = fuelSum,
+                
+                // AUDIT TRAIL
+                KM_Start__c   = closedBooking.KM_Start__c,
+                KM_End__c     = closedBooking.KM_End__c
+            );
+
+            // --- NEW: Map Gas Fields ---
+            if (gasSettings != null && gasSettings.Id != null) {
+                newCharge.Gas_Date__c = gasSettings.Gas_Date__c;
+                newCharge.Gas_Price__c = gasSettings.Gas_Price__c;
+                newCharge.Gas_Source__c = gasSettings.Gas_Source__c;
+            }
+
+            insert newCharge;
+
+            // Feedback SMS
+            if (bookingToClose.Contact__r.MobilePhone != null) {
+                String feedbackMessage = 'Thank you for driving with BigMitzvah.org! Total Days: ' + closedBooking.Total_Days__c + '. How was your experience?';
+                TwilioService.sendSms(bookingToClose.Contact__r.MobilePhone, feedbackMessage);
+            }
         }
 
-        insert newCharge;
+        // 7. Cleanup Admin Passcodes
+        List<Contact> allAdmins = [SELECT Id, OTP__c, OTP_Exipre__c FROM Contact WHERE Admin__c = TRUE];
+        for(Contact admin : allAdmins) {
+            admin.OTP__c = null;
+            admin.OTP_Exipre__c = null;
+        }
+        update allAdmins;
 
-        return new PageReference('/' + this.tankId);
-    }
-    
-    public PageReference cancel() {
-        return new PageReference('/' + this.tankId);
+        return new PageReference('/' + tank.Id);
     }
 }
