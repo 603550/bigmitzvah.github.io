@@ -1,8 +1,8 @@
 /**
- * @description Apex controller for the Rental App Visualforce page.
- * UPDATED: Removes manual odometer input and trusts Bouncie automation.
+ * @description Apex controller for the Rental App.
+ * UPDATED: Includes 'FOR UPDATE' locking, trusts Bouncie for Odometer, and prevents double-booking.
  */
-public with sharing class BookingAppController {
+public without sharing class BookingAppController {
 
     // Wrapper class to safely transport Contact data to the front end.
     public class Driver {
@@ -19,6 +19,7 @@ public with sharing class BookingAppController {
             this.driverId = c.Description; 
             this.name = c.Name;
             this.phone = c.MobilePhone;
+            // NOTE: Replace these with actual fields if you have them
             this.licenseNumber = 'QC197601-172278';
             this.licenseExpiry = '2026-05-10';
             this.cardLast4 = '4242';
@@ -38,6 +39,9 @@ public with sharing class BookingAppController {
         }
     }
 
+    /**
+     * @description Fetches all non-admin contacts to be displayed as drivers.
+     */
     @RemoteAction
     public static List<Driver> getDrivers() {
         List<Driver> driverList = new List<Driver>();
@@ -47,6 +51,9 @@ public with sharing class BookingAppController {
         return driverList;
     }
     
+    /**
+     * @description Fetches all tanks with a status of 'Open'.
+     */
     @RemoteAction
     public static List<Tank> getAvailableTanks() {
         List<Tank> tankList = new List<Tank>();
@@ -56,6 +63,9 @@ public with sharing class BookingAppController {
         return tankList;
     }
 
+    /**
+     * @description Generates and sends a 4-digit OTP.
+     */
     @RemoteAction
     public static String sendOtp(Id contactId) {
         Contact driver = [SELECT Id, MobilePhone FROM Contact WHERE Id = :contactId LIMIT 1];
@@ -69,15 +79,15 @@ public with sharing class BookingAppController {
         driver.OTP_Exipre__c = System.now().addMinutes(5);
         update driver;
 
-        // Note: Ensure TwilioService is accessible here, or use the helper method below
+        // Uses the helper method below or your external TwilioService
         sendSms(driver.MobilePhone, 'Your BigMitzvah.org verification code is: ' + passcode);
         
         return driver.MobilePhone;
     }
 
     /**
-     * @description Verifies the OTP and creates a new booking.
-     * UPDATED: Removed 'startKM' parameter.
+     * @description Verifies OTP and creates a new booking.
+     * CRITICAL: Uses 'FOR UPDATE' to lock the record and prevent race conditions.
      */
     @RemoteAction
     public static Booking__c startNewBooking(Id contactId, Id tankId, String otpCode) {
@@ -87,10 +97,12 @@ public with sharing class BookingAppController {
             throw new AuraHandledException('Invalid or expired passcode. Please try again.');
         }
 
-        // 2. Fetch Tank Details
-        Tanks__c tank = [SELECT Id, Name, KM__c, Status__c FROM Tanks__c WHERE Id = :tankId LIMIT 1];
+        // 2. Fetch Tank Details with LOCK (FOR UPDATE)
+        // This stops anyone else from booking this specific tank while this code runs.
+        Tanks__c tank = [SELECT Id, Name, KM__c, Status__c FROM Tanks__c WHERE Id = :tankId FOR UPDATE];
 
         // --- SAFETY CHECK: PREVENT DOUBLE BOOKING ---
+        // Even with the lock, we must check if it's still "Open"
         List<Booking__c> existingActive = [SELECT Id FROM Booking__c WHERE Tank__c = :tankId AND Active__c = TRUE LIMIT 1];
         if (tank.Status__c != 'Open' || !existingActive.isEmpty()) {
             throw new AuraHandledException('Sorry, this vehicle has just been booked by another driver.');
@@ -103,26 +115,29 @@ public with sharing class BookingAppController {
             Start_Time__c = System.now(),
             Active__c = TRUE,
             Status__c = 'Open',
-            // If Tank KM is null, default to 0 to prevent errors
+            // If Tank KM is null, default to 0 to prevent null pointer errors
             KM_Start__c = (tank.KM__c != null ? tank.KM__c : 0) 
         );
         insert newBooking;
         
         // 4. Update Tank Status ONLY
-        // We do NOT update KM__c or Last_Use__c here. We trust Bouncie automation.
+        // We do NOT update KM__c or Last_Use__c manually here.
         tank.Status__c = 'Booked';
         update tank;
         
-        // 5. Cleanup OTP
+        // 5. Cleanup OTP for security
         Contact driverToClear = new Contact(Id = contactId, OTP__c = null, OTP_Exipre__c = null);
         update driverToClear;
         
         return [SELECT Id, Name, Contact__r.Name, Contact__r.Description, Start_Time__c, KM_Start__c FROM Booking__c WHERE Id = :newBooking.Id];
     }
 
+    /**
+     * @description Helper for SMS logic (e.g. Twilio)
+     */
     @future(callout=true)
     private static void sendSms(String phoneNumber, String messageBody) {
-        // Calls your Twilio Service
+        // Ensure you have a TwilioService class, otherwise implement logic here
         TwilioService.sendSms(phoneNumber, messageBody);
     }
 }
