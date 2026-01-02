@@ -1,0 +1,90 @@
+<apex:page standardController="Tanks__c" extensions="AddChargeController" docType="html-5.0">
+    <apex:sectionHeader title="Add New Charge" subtitle="For Tank: {!Tanks__c.Name}"/>
+    <apex:pageMessages id="messages"/>
+
+    <!-- This main panel will be re-rendered to show different steps -->
+    <apex:outputPanel id="mainPanel">
+        <apex:form >
+
+            <!-- STEP 1: ADMIN VERIFICATION (shows before passcode is sent) -->
+            <apex:pageBlock title="Admin Verification Required" rendered="{!isAdminVerified == false && passcodeSent == false}">
+                <apex:pageBlockButtons >
+                    <apex:commandButton value="Send Verification Code to Admins" action="{!sendPasscode}" rerender="mainPanel, messages"/>
+                    <apex:commandButton value="Cancel" action="{!cancel}" immediate="true"/>
+                </apex:pageBlockButtons>
+                <apex:pageBlockSection >
+                    <apex:pageMessage severity="INFO" strength="2" summary="For security, adding a charge requires admin verification. Click the button above to send a one-time passcode to all administrators."/>
+                </apex:pageBlockSection>
+            </apex:pageBlock>
+
+            <!-- STEP 2: PASSCODE ENTRY (shows after passcode is sent) -->
+            <apex:pageBlock title="Enter Passcode" rendered="{!isAdminVerified == false && passcodeSent == true}">
+                <apex:pageBlockButtons >
+                    <apex:commandButton value="Verify Passcode" action="{!verifyPasscode}" rerender="mainPanel, messages"/>
+                    <apex:commandButton value="Cancel" action="{!cancel}" immediate="true"/>
+                </apex:pageBlockButtons>
+                
+                <apex:pageBlockSection columns="1">
+                    <apex:pageMessage severity="confirm" strength="2" summary="A passcode has been sent to all administrators. Please enter it below to continue."/>
+                    <apex:pageBlockSectionItem >
+                        <apex:outputLabel value="Enter Passcode" for="passcode"/>
+                        <apex:inputSecret id="passcode" value="{!enteredPasscode}" required="true"/>
+                    </apex:pageBlockSectionItem>
+                </apex:pageBlockSection>
+            </apex:pageBlock>
+
+            <!-- STEP 3: INPUT FORM (shows after admin is verified) -->
+            <apex:pageBlock title="Enter Charge Details" rendered="{!isAdminVerified == true && bookingFound == false}">
+                <apex:pageBlockButtons >
+                    <apex:commandButton value="Find Matching Booking" action="{!findBookingAndConfirm}" rerender="mainPanel, messages"/>
+                    <apex:commandButton value="Cancel" action="{!cancel}" immediate="true"/>
+                </apex:pageBlockButtons>
+
+                <apex:pageBlockSection columns="1">
+                    <apex:outputField value="{!Tanks__c.Name}" label="Tank"/>
+                    <apex:input label="Date/Time of Charge" value="{!chargeDateTime}" required="true" type="datetime-local"/>
+                    <apex:input label="Charge Amount ($)" value="{!chargeAmount}" required="true" type="number"/>
+                    <apex:inputTextarea label="Description" value="{!chargeDescription}" required="true" rows="3"/>
+                </apex:pageBlockSection>
+            </apex:pageBlock>
+
+            <!-- STEP 4: CONFIRMATION (shows after a booking is found) -->
+            <apex:pageBlock title="Confirm Charge Details" rendered="{!bookingFound == true}">
+                <apex:pageBlockButtons >
+                    <apex:commandButton value="Submit Charge" action="{!createCharge}"/>
+                    <apex:commandButton value="Back" action="{!cancel}" immediate="true"/>
+                </apex:pageBlockButtons>
+
+                <!-- Message for a REGULAR booking -->
+                <apex:pageMessage severity="INFO" strength="2" 
+                    summary="A matching booking was found." 
+                    detail="Please confirm the details below before creating the charge."
+                    rendered="{!isAdminBookingFound == false}">
+                </apex:pageMessage>
+
+                <!-- Message for an ADMIN booking -->
+                <apex:pageMessage severity="WARNING" strength="2" 
+                    summary="No customer booking was found for this time." 
+                    detail="This charge will be expensed to the general admin account."
+                    rendered="{!isAdminBookingFound == true}">
+                </apex:pageMessage>
+
+                <apex:pageBlockSection title="Charge Will Be Added To This Booking" columns="1">
+                    <apex:outputField value="{!foundBooking.Name}" label="Booking ID"/>
+                    <apex:pageBlockSectionItem >
+                        <apex:outputLabel value="Contact"/>
+                        <apex:outputText value="{!foundBooking.Contact__r.Name} / {!foundBooking.Contact__r.MobilePhone}"/>
+                    </apex:pageBlockSectionItem>
+                    <apex:outputField value="{!foundBooking.Tank__r.Name}" label="Tank"/>
+                </apex:pageBlockSection>
+                
+                <apex:pageBlockSection title="Charge Details" columns="1">
+                    <apex:outputText label="Date/Time" value="{!chargeDateTime}"/>
+                    <apex:outputText label="Amount" value="{!chargeAmount}"/>
+                    <apex:outputText label="Description" value="{!chargeDescription}"/>
+                </apex:pageBlockSection>
+            </apex:pageBlock>
+
+        </apex:form>
+    </apex:outputPanel>
+</apex:page>
