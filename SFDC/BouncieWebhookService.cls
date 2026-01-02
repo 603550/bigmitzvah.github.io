@@ -1,6 +1,7 @@
 @RestResource(urlMapping='/BouncieWebhook/*')
 global without sharing class BouncieWebhookService {
 
+    // Unit conversions
     private static final Decimal MILES_TO_KM   = 1.609344;
     private static final Decimal MPH_TO_KMH    = 1.609344;
     private static final Decimal GAL_TO_LITERS = 3.78541;
@@ -8,6 +9,7 @@ global without sharing class BouncieWebhookService {
 
     @HttpPost
     global static void handleWebhook() {
+
         RestRequest req = RestContext.request;
         RestResponse res = RestContext.response;
         res.addHeader('Content-Type', 'application/json');
@@ -19,7 +21,7 @@ global without sharing class BouncieWebhookService {
 
         Bouncie_Settings__c cfg = Bouncie_Settings__c.getOrgDefaults();
         if (cfg == null || String.isBlank(cfg.Bouncie_Webhook_Key__c) || key != cfg.Bouncie_Webhook_Key__c) {
-            res.statusCode = 200; // Return 200 to Bouncie to avoid retries on bad auth
+            res.statusCode = 200;
             res.responseBody = Blob.valueOf('{"status":"ignored"}');
             return;
         }
@@ -32,6 +34,12 @@ global without sharing class BouncieWebhookService {
             String eventType = (p.get('eventType') == null) ? null : String.valueOf(p.get('eventType'));
             String vin       = (p.get('vin') == null) ? null : String.valueOf(p.get('vin'));
             String txn       = (p.get('transactionId') == null) ? null : String.valueOf(p.get('transactionId'));
+
+            if (String.isBlank(eventType) || String.isBlank(txn)) {
+                res.statusCode = 200;
+                res.responseBody = Blob.valueOf('{"status":"ignored"}');
+                return;
+            }
 
             // =================================================================================
             // LIVE TRACKING LOGIC (tripData)
@@ -47,13 +55,12 @@ global without sharing class BouncieWebhookService {
                     Double lat = (gps != null) ? (Double) gps.get('lat') : null;
                     Double lon = (gps != null) ? (Double) gps.get('lon') : null;
                     
-                    // 2. EXTRACT FUEL: Scan the whole list for any 'fuelLevelInput'
+                    // 2. SCAN ALL POINTS for Fuel (Extracting from any index, like index 4)
                     Decimal foundFuel = null;
                     for (Object obj : dataList) {
                         Map<String,Object> pt = (Map<String,Object>) obj;
                         if (pt.containsKey('fuelLevelInput')) {
                             foundFuel = Decimal.valueOf(String.valueOf(pt.get('fuelLevelInput')));
-                            // Note: we don't break, so we get the most recent fuel in this packet
                         }
                     }
 
@@ -63,19 +70,29 @@ global without sharing class BouncieWebhookService {
                         liveTimestamp = (Datetime) JSON.deserialize('"' + String.valueOf(latestPoint.get('timestamp')) + '"', Datetime.class);
                     }
 
-                    // 4. UPDATE TANK
-                    List<Tanks__c> tankToUpdate = [SELECT Id FROM Tanks__c WHERE VIN__c = :vin LIMIT 1];
+                    // 4. UPDATE TANK (Including Fuel Low Logic)
+                    List<Tanks__c> tankToUpdate = [SELECT Id, Fuel_Limit__c FROM Tanks__c WHERE VIN__c = :vin LIMIT 1];
                     if (!tankToUpdate.isEmpty()) {
                         Tanks__c t = tankToUpdate[0];
+                        
+                        // Update Location
                         if (lat != null && lon != null) {
                             t.Location__Latitude__s = lat;
                             t.Location__Longitude__s = lon;
                         }
-                        t.Last_Use__c = liveTimestamp; // Syncing to your consolidated field
                         
+                        // Consolidated Timestamp field
+                        t.Last_Use__c = liveTimestamp; 
+
+                        // Fuel Logic
                         if (foundFuel != null) {
                             t.Fuel_Level__c = foundFuel;
+                            
+                            // Check against custom limit (defaults to 15 if not set)
+                            Decimal limitVal = (t.Fuel_Limit__c != null) ? t.Fuel_Limit__c : 15.0;
+                            t.Fuel_Low__c = (foundFuel <= limitVal); 
                         }
+                        
                         update t;
                     }
                 }
@@ -83,10 +100,9 @@ global without sharing class BouncieWebhookService {
                 res.responseBody = Blob.valueOf('{"status":"ok", "action":"live_update"}');
                 return; 
             }
+            // =================================================================================
 
-            // =================================================================================
-            // HISTORICAL EVENTS (tripStart, tripEnd, tripMetrics)
-            // =================================================================================
+            // HISTORICAL DATA HANDLING
             Map<String,Object> body;
             if (eventType == 'tripStart')      body = (Map<String,Object>) p.get('start');
             else if (eventType == 'tripEnd')   body = (Map<String,Object>) p.get('end');
@@ -94,7 +110,7 @@ global without sharing class BouncieWebhookService {
 
             if (body == null) {
                 res.statusCode = 200;
-                res.responseBody = Blob.valueOf('{"status":"ignored"}');
+                res.responseBody = Blob.valueOf('{"status":"ok"}');
                 return;
             }
 
@@ -130,8 +146,9 @@ global without sharing class BouncieWebhookService {
             upsert ev Event_Key__c;
 
         } catch (Exception e) {
-            System.debug('Bouncie Error: ' + e.getMessage());
+            System.debug('Error processing Bouncie Webhook: ' + e.getMessage());
         }
+
         res.statusCode = 200;
         res.responseBody = Blob.valueOf('{"status":"ok"}');
     }
