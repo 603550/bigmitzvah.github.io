@@ -12,11 +12,9 @@ global without sharing class BouncieWebhookService {
 
         RestRequest req = RestContext.request;
         RestResponse res = RestContext.response;
-
-        // ALWAYS respond quickly
         res.addHeader('Content-Type', 'application/json');
 
-        // ---- AUTH ----
+        // AUTH
         String key = req.headers.get('x-bouncie-authorization');
         if (String.isBlank(key)) key = req.headers.get('x-api-key');
         if (String.isBlank(key)) key = req.headers.get('Authorization');
@@ -31,7 +29,6 @@ global without sharing class BouncieWebhookService {
         try {
             String raw = (req.requestBody == null) ? '' : req.requestBody.toString();
             Map<String,Object> root = (Map<String,Object>) JSON.deserializeUntyped(raw);
-
             Map<String,Object> p = root.containsKey('payload') ? (Map<String,Object>) root.get('payload') : root;
 
             String eventType = (p.get('eventType') == null) ? null : String.valueOf(p.get('eventType'));
@@ -45,64 +42,54 @@ global without sharing class BouncieWebhookService {
             }
 
             // =================================================================================
-            // NEW: LIVE TRACKING LOGIC (tripData)
+            // LIVE TRACKING LOGIC (tripData) -> UPDATED TO USE Last_Use__c
             // =================================================================================
             if (eventType == 'tripData') {
                 List<Object> dataList = (List<Object>) p.get('data');
                 
-                // We only process the very last data point in the list (most recent)
                 if (dataList != null && !dataList.isEmpty() && vin != null) {
                     Map<String,Object> latestPoint = (Map<String,Object>) dataList[dataList.size() - 1];
                     
-                    // Extract GPS
                     Map<String,Object> gps = (Map<String,Object>) latestPoint.get('gps');
                     Double lat = (gps != null) ? (Double) gps.get('lat') : null;
                     Double lon = (gps != null) ? (Double) gps.get('lon') : null;
                     
-                    // Extract Fuel
                     Object fuelObj = latestPoint.get('fuelLevelInput');
                     Decimal fuelLevel = (fuelObj != null) ? Decimal.valueOf(String.valueOf(fuelObj)) : null;
 
-                    // Extract Timestamp
                     Datetime liveTimestamp = System.now();
                     if (latestPoint.get('timestamp') != null) {
                         liveTimestamp = safeParseIsoDatetime(String.valueOf(latestPoint.get('timestamp')), System.now());
                     }
 
-                    // UPDATE TANK DIRECTLY
                     if (lat != null && lon != null) {
                         List<Tanks__c> tankToUpdate = [SELECT Id FROM Tanks__c WHERE VIN__c = :vin LIMIT 1];
                         if (!tankToUpdate.isEmpty()) {
                             Tanks__c t = tankToUpdate[0];
                             
-                            // Map to your new fields
                             t.Location__Latitude__s = lat;
                             t.Location__Longitude__s = lon;
-                            t.Timestamp__c = liveTimestamp;
+                            
+                            // *** UPDATED HERE ***
+                            t.Last_Use__c = liveTimestamp; 
 
                             if (fuelLevel != null) {
                                 t.Fuel_Level__c = fuelLevel;
                             }
-                            
                             update t;
                         }
                     }
                 }
-
-                // Stop here. Do not save history for live tracking.
                 res.statusCode = 200;
                 res.responseBody = Blob.valueOf('{"status":"ok", "action":"live_update"}');
                 return; 
             }
             // =================================================================================
 
-            // ... EXISTING LOGIC FOR TRIP START / END / METRICS ...
-            
             Map<String,Object> body;
             if (eventType == 'tripStart')      body = (Map<String,Object>) p.get('start');
             else if (eventType == 'tripEnd')   body = (Map<String,Object>) p.get('end');
             else if (eventType == 'tripMetrics') body = (Map<String,Object>) p.get('metrics');
-            else body = null;
 
             Datetime ts = System.now();
             if (body != null && body.get('timestamp') != null) {
@@ -121,12 +108,8 @@ global without sharing class BouncieWebhookService {
             ev.Processed__c   = false;
 
             if (body != null) {
-                if (body.get('odometer') != null) {
-                    ev.odometer__c = Decimal.valueOf(String.valueOf(body.get('odometer'))) * MILES_TO_KM;
-                }
-                if (body.get('fuelConsumed') != null) {
-                    ev.fuelConsumed__c = Decimal.valueOf(String.valueOf(body.get('fuelConsumed'))) * GAL_TO_LITERS;
-                }
+                if (body.get('odometer') != null) ev.odometer__c = Decimal.valueOf(String.valueOf(body.get('odometer'))) * MILES_TO_KM;
+                if (body.get('fuelConsumed') != null) ev.fuelConsumed__c = Decimal.valueOf(String.valueOf(body.get('fuelConsumed'))) * GAL_TO_LITERS;
 
                 if (eventType == 'tripMetrics') {
                     if (body.get('tripDistance') != null) ev.Trip_KM__c = Decimal.valueOf(String.valueOf(body.get('tripDistance'))) * MILES_TO_KM;
@@ -139,7 +122,6 @@ global without sharing class BouncieWebhookService {
                 }
             }
 
-            // DUPLICATE PROTECTION (Keep the higher Odometer)
             if (eventType == 'tripEnd' && ev.odometer__c != null) {
                 List<Trip_Event__c> existingEvents = [SELECT Id, odometer__c FROM Trip_Event__c WHERE Event_Key__c = :eventKey LIMIT 1];
                 if (!existingEvents.isEmpty()) {
@@ -149,11 +131,9 @@ global without sharing class BouncieWebhookService {
                     }
                 }
             }
-
             upsert ev Event_Key__c;
 
         } catch (Exception ignore) {}
-
         res.statusCode = 200;
         res.responseBody = Blob.valueOf('{"status":"ok"}');
     }
