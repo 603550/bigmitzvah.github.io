@@ -110,7 +110,7 @@ public with sharing class CloseBookingController {
         // 6. GENERATE CHARGE
         if (closedBooking.Admin__c == false) {
             
-            // --- NEW: Retrieve Gas Settings ---
+            // --- RETRIEVE CUSTOM SETTINGS ---
             Gasoline__c gasSettings = Gasoline__c.getOrgDefaults();
 
             Charge__c newCharge = new Charge__c(
@@ -132,11 +132,14 @@ public with sharing class CloseBookingController {
                 KM_End__c     = closedBooking.KM_End__c
             );
 
-            // --- NEW: Map Gas Fields ---
+            // --- MAP GAS FIELDS & FUEL RATE ---
             if (gasSettings != null && gasSettings.Id != null) {
-                newCharge.Gas_Date__c = gasSettings.Gas_Date__c;
-                newCharge.Gas_Price__c = gasSettings.Gas_Price__c;
+                newCharge.Gas_Date__c   = gasSettings.Gas_Date__c;
+                newCharge.Gas_Price__c  = gasSettings.Gas_Price__c;
                 newCharge.Gas_Source__c = gasSettings.Gas_Source__c;
+                
+                // UPDATE FUEL RATE WITH GAS PRICE
+                newCharge.Fuel_Rate__c  = gasSettings.Gas_Price__c;
             }
 
             insert newCharge;
