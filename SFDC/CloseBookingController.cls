@@ -7,11 +7,12 @@ public with sharing class CloseBookingController {
 
     // Constructor
     public CloseBookingController(ApexPages.StandardController controller) {
-        this.tank = (Tanks__c)controller.getRecord();
+        // Querying the name so it's available for SMS messages
+        this.tank = [SELECT Id, Name FROM Tanks__c WHERE Id = :controller.getId()];
         this.passcodeSent = false;
     }
 
-    // --- Step 1: Send Passcode to All Admins ---
+    // --- Step 1: Send Passcode to All Admnins ---
     public void sendPasscode() {
         // Validation: Don't allow closing if there is an Active Trip currently running
         List<Trip__c> activeTrips = [
@@ -45,7 +46,6 @@ public with sharing class CloseBookingController {
 
         // Send SMS to all Admins
         for (Contact admin : admins) {
-            // Assuming TwilioService is your utility class for sending SMS
             TwilioService.sendSms(admin.MobilePhone, 'Request to CLOSE booking for ' + tank.Name + '. Code: ' + passcode);
         }
         
@@ -67,15 +67,14 @@ public with sharing class CloseBookingController {
             return null;
         }
 
-        List<Booking__c> activeBookings = [SELECT Id, Contact__r.MobilePhone, Start_Time__c FROM Booking__c WHERE Tank__c = :tank.Id AND Active__c = TRUE LIMIT 1];
+        List<Booking__c> activeBookings = [SELECT Id, Contact__r.MobilePhone, Contact__c, Admin__c, Start_Time__c FROM Booking__c WHERE Tank__c = :tank.Id AND Active__c = TRUE LIMIT 1];
         if (activeBookings.isEmpty()) {
             ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO, 'There is no active booking for this tank to close.'));
             return null;
         }
         
         // 2. Close the Booking
-        // We update End_Time__c and KM_End__c. This triggers your Formula Fields to recalculate.
-        Tanks__c currentTankState = [SELECT KM__c FROM Tanks__c WHERE Id = :tank.Id];
+        Tanks__c currentTankState = [SELECT KM__c, Location__Latitude__s, Location__Longitude__s FROM Tanks__c WHERE Id = :tank.Id LIMIT 1];
         Booking__c bookingToClose = activeBookings[0];
         
         bookingToClose.Active__c = false;
@@ -83,13 +82,13 @@ public with sharing class CloseBookingController {
         bookingToClose.Status__c = 'Closed';
         bookingToClose.KM_End__c = currentTankState.KM__c;
         
-        update bookingToClose; // <--- Formulas (Total_Days__c, Total_KM__c) update here
+        update bookingToClose; 
 
         // 3. Re-Open the Tank
         Tanks__c tankToUpdate = new Tanks__c(Id = tank.Id, Status__c = 'Open');
         update tankToUpdate;
 
-        // 4. Calculate Total Fuel (Summing Trip records via Apex)
+        // 4. Calculate Total Fuel from Trip records
         AggregateResult[] tripResults = [
             SELECT SUM(Total_Fuel__c) totalFuel 
             FROM Trip__c 
@@ -98,7 +97,7 @@ public with sharing class CloseBookingController {
         Decimal fuelSum = (Decimal)tripResults[0].get('totalFuel');
         if (fuelSum == null) fuelSum = 0;
 
-        // 5. Re-Query Booking (Added KM_Start__c and KM_End__c)
+        // 5. Re-Query Booking for Formula Values
         Booking__c closedBooking = [
             SELECT Id, Contact__c, Admin__c, Start_Time__c, End_Time__c, 
                    Total_KM__c, Total_Days__c, Tank__c,
@@ -110,7 +109,7 @@ public with sharing class CloseBookingController {
         // 6. GENERATE CHARGE
         if (closedBooking.Admin__c == false) {
             
-            // --- RETRIEVE CUSTOM SETTINGS ---
+            // Retrieve today's Gas Price from Custom Setting
             Gasoline__c gasSettings = Gasoline__c.getOrgDefaults();
 
             Charge__c newCharge = new Charge__c(
@@ -122,29 +121,29 @@ public with sharing class CloseBookingController {
                 Type__c       = 'Booking',
                 Expense__c    = 0,
                 
-                // MAPPING VALUES
+                // DATA MAPPING
                 KM_Total__c   = closedBooking.Total_KM__c, 
                 Total_Days__c = closedBooking.Total_Days__c,
                 Total_Fuel__c = fuelSum,
-                
-                // AUDIT TRAIL
                 KM_Start__c   = closedBooking.KM_Start__c,
-                KM_End__c     = closedBooking.KM_End__c
+                KM_End__c     = closedBooking.KM_End__c,
+
+                // CAPTURE RETURN GPS (Snapshot from the Tank)
+                Location_GPS__Latitude__s  = currentTankState.Location__Latitude__s,
+                Location_GPS__Longitude__s = currentTankState.Location__Longitude__s
             );
 
-            // --- MAP GAS FIELDS & FUEL RATE ---
-            if (gasSettings != null && gasSettings.Id != null) {
+            // Populate Fuel Rates if Gas Settings are available
+            if (gasSettings != null) {
                 newCharge.Gas_Date__c   = gasSettings.Gas_Date__c;
                 newCharge.Gas_Price__c  = gasSettings.Gas_Price__c;
                 newCharge.Gas_Source__c = gasSettings.Gas_Source__c;
-                
-                // UPDATE FUEL RATE WITH GAS PRICE
-                newCharge.Fuel_Rate__c  = gasSettings.Gas_Price__c;
+                newCharge.Fuel_Rate__c  = gasSettings.Gas_Price__c; // Billing rate matches market rate
             }
 
             insert newCharge;
 
-            // Feedback SMS
+            // Optional Feedback SMS to Customer
             if (bookingToClose.Contact__r.MobilePhone != null) {
                 String feedbackMessage = 'Thank you for driving with BigMitzvah.org! Total Days: ' + closedBooking.Total_Days__c + '. How was your experience?';
                 TwilioService.sendSms(bookingToClose.Contact__r.MobilePhone, feedbackMessage);
@@ -152,7 +151,7 @@ public with sharing class CloseBookingController {
         }
 
         // 7. Cleanup Admin Passcodes
-        List<Contact> allAdmins = [SELECT Id, OTP__c, OTP_Exipre__c FROM Contact WHERE Admin__c = TRUE];
+        List<Contact> allAdmins = [SELECT Id FROM Contact WHERE Admin__c = TRUE];
         for(Contact admin : allAdmins) {
             admin.OTP__c = null;
             admin.OTP_Exipre__c = null;
