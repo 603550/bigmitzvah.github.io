@@ -60,8 +60,6 @@ global without sharing class BouncieWebhookService {
                 ts = safeParseIsoDatetime(String.valueOf(body.get('timestamp')), System.now());
             }
 
-            // REMOVED: The "Stale" check. We want late data (tunnels, outages).
-
             // Dedup key: transaction + eventType + timestamp (seconds)
             String tsKey = String.valueOf(ts.getTime() / 1000);
             String eventKey = txn + '|' + eventType + '|' + tsKey;
@@ -110,6 +108,28 @@ global without sharing class BouncieWebhookService {
                     }
                 }
             }
+
+            // --- DUPLICATE PROTECTION LOGIC ---
+            // Fixes issue where "Bad" odometer (10) overwrites "Good" odometer (28201)
+            // if two tripEnd events arrive at the exact same timestamp.
+            if (eventType == 'tripEnd' && ev.odometer__c != null) {
+                List<Trip_Event__c> existingEvents = [
+                    SELECT Id, odometer__c 
+                    FROM Trip_Event__c 
+                    WHERE Event_Key__c = :eventKey 
+                    LIMIT 1
+                ];
+                
+                if (!existingEvents.isEmpty()) {
+                    Decimal oldOdo = existingEvents[0].odometer__c;
+                    // If DB has a value, and that value is greater than incoming...
+                    // KEEP the old value. Do not let the new small value overwrite it.
+                    if (oldOdo != null && oldOdo > ev.odometer__c) {
+                        ev.odometer__c = oldOdo;
+                    }
+                }
+            }
+            // ----------------------------------
 
             // Upsert event by unique external key (prevents duplicate rows)
             upsert ev Event_Key__c;
