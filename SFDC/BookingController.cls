@@ -97,20 +97,19 @@ public with sharing class BookingController {
         Contact driverToClear = new Contact(Id = selectedContactId, OTP__c = null, OTP_Exipre__c = null);
         update driverToClear;
 
-        // 6. Send SMS Notifications & Update Chat Context
+        // 6. Notifications
         String firstName = (verifiedDriver[0].FirstName != null) ? verifiedDriver[0].FirstName : 'Driver';
 
         if (verifiedDriver[0].MobilePhone != null) {
-            // A. Send Welcome SMS
+            // A. Driver Welcome
             String combinedMsg = 'Welcome to the BigMitzvah Tank, ' + firstName + '! (Booking #' + newBooking.Name + ') Have a safe drive.\n\nNote: Please text this number for any support or assistance.';
             TwilioService.sendSms(verifiedDriver[0].MobilePhone, combinedMsg);
 
-            // B. UPDATE CHAT CONTEXT (Critical Fix)
-            // This ensures the system immediately knows to route your texts to THIS driver.
+            // B. Set Chat Context (Crucial)
             TwilioService.updateChatContext(verifiedDriver[0].MobilePhone);
         }
 
-        // C. Send Admin Notification
+        // C. ALL ADMINS Notification (Exact text you requested)
         List<Contact> admins = [SELECT MobilePhone FROM Contact WHERE Admin__c = TRUE AND MobilePhone != null];
         String adminMsg = firstName + ' has started Booking #' + newBooking.Name + '. You are listed as the contact number for support messages. Please keep an eye out for messages from the driver. Have a nice day.';
 
