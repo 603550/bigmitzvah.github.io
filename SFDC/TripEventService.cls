@@ -38,7 +38,8 @@ public without sharing class TripEventService {
         // 3. Load Context (Tanks, Bookings, Existing Trips)
         Map<String, Tanks__c> tankByVin = new Map<String, Tanks__c>();
         if (!vins.isEmpty()) {
-            for (Tanks__c t : [SELECT Id, VIN__c, KM__c FROM Tanks__c WHERE VIN__c IN :vins]) {
+            // UPDATED: Added Idle_Limit__c to query
+            for (Tanks__c t : [SELECT Id, VIN__c, KM__c, Idle_Limit__c FROM Tanks__c WHERE VIN__c IN :vins]) {
                 tankByVin.put(t.VIN__c, t);
             }
         }
@@ -132,10 +133,12 @@ public without sharing class TripEventService {
                 if (e.Hard_Accel__c != null && e.Hard_Accel__c > 0) {
                     trip.flag__c = true;
                 }
-                // Check Idle Time (> 60 minutes)
-                // Note: Bouncie sends Idle Time in MINUTES usually, or if you converted to minutes in webhook
-                // Assuming your field stores MINUTES:
-                if (e.Idle_Time__c != null && e.Idle_Time__c > 60) {
+                
+                // UPDATED: Check Idle Time (Dynamic against Tank)
+                // Default to 60 if Tank has no limit set
+                Decimal idleLimit = (tank != null && tank.Idle_Limit__c != null) ? tank.Idle_Limit__c : 60;
+                
+                if (e.Idle_Time__c != null && e.Idle_Time__c >= idleLimit) {
                     trip.flag__c = true;
                 }
 
@@ -146,7 +149,7 @@ public without sharing class TripEventService {
                 }
                 else if (e.eventType__c == 'tripEnd') {
                     trip.End_Time__c = e.timestamp__c;
-                    trip.Active__c   = false;
+                    trip.Active__c    = false;
                     
                     if (e.odometer__c != null) trip.KM_End__c = e.odometer__c;
                     if (e.fuelConsumed__c != null) trip.Total_Fuel__c = e.fuelConsumed__c;
@@ -161,14 +164,14 @@ public without sharing class TripEventService {
                     }
                 }
                 else if (e.eventType__c == 'tripMetrics') {
-                    trip.Trip_KM__c      = e.Trip_KM__c;
-                    trip.Trip_Time__c    = e.Trip_Time__c;
-                    trip.Idle_Time__c    = e.Idle_Time__c;
-                    trip.Max_Speed__c    = e.Max_Speed__c;
-                    trip.Avg_Speed__c    = e.Avg_Speed__c;
-                    trip.Hard_Brakes__c  = e.Hard_Brakes__c;
-                    trip.Hard_Accel__c   = e.Hard_Accel__c;
-                    trip.Timestamp__c    = e.timestamp__c;
+                    trip.Trip_KM__c       = e.Trip_KM__c;
+                    trip.Trip_Time__c     = e.Trip_Time__c;
+                    trip.Idle_Time__c     = e.Idle_Time__c;
+                    trip.Max_Speed__c     = e.Max_Speed__c;
+                    trip.Avg_Speed__c     = e.Avg_Speed__c;
+                    trip.Hard_Brakes__c   = e.Hard_Brakes__c;
+                    trip.Hard_Accel__c    = e.Hard_Accel__c;
+                    trip.Timestamp__c     = e.timestamp__c;
                 }
             }
             tripUpserts.add(trip);
