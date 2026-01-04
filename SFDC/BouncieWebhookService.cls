@@ -1,7 +1,6 @@
 @RestResource(urlMapping='/BouncieWebhook/*')
 global without sharing class BouncieWebhookService {
 
-    // Unit conversions
     private static final Decimal MILES_TO_KM   = 1.609344;
     private static final Decimal MPH_TO_KMH    = 1.609344;
     private static final Decimal GAL_TO_LITERS = 3.78541;
@@ -9,12 +8,10 @@ global without sharing class BouncieWebhookService {
 
     @HttpPost
     global static void handleWebhook() {
-
         RestRequest req = RestContext.request;
         RestResponse res = RestContext.response;
         res.addHeader('Content-Type', 'application/json');
 
-        // --- AUTHENTICATION ---
         String key = req.headers.get('x-bouncie-authorization');
         if (String.isBlank(key)) key = req.headers.get('x-api-key');
         if (String.isBlank(key)) key = req.headers.get('Authorization');
@@ -41,21 +38,14 @@ global without sharing class BouncieWebhookService {
                 return;
             }
 
-            // =================================================================================
-            // LIVE TRACKING LOGIC (tripData)
-            // =================================================================================
             if (eventType == 'tripData') {
                 List<Object> dataList = (List<Object>) p.get('data');
-                
                 if (dataList != null && !dataList.isEmpty() && vin != null) {
-                    // 1. WHICH GPS? Using the VERY LAST point (most recent)
                     Map<String,Object> latestPoint = (Map<String,Object>) dataList[dataList.size() - 1];
                     Map<String,Object> gps = (Map<String,Object>) latestPoint.get('gps');
-                    
                     Double lat = (gps != null) ? (Double) gps.get('lat') : null;
                     Double lon = (gps != null) ? (Double) gps.get('lon') : null;
                     
-                    // 2. SCAN ALL POINTS for Fuel (Extracting from any index, like index 4)
                     Decimal foundFuel = null;
                     for (Object obj : dataList) {
                         Map<String,Object> pt = (Map<String,Object>) obj;
@@ -64,35 +54,24 @@ global without sharing class BouncieWebhookService {
                         }
                     }
 
-                    // 3. GET TIMESTAMP: From the latest GPS point
                     Datetime liveTimestamp = System.now();
                     if (latestPoint.get('timestamp') != null) {
                         liveTimestamp = (Datetime) JSON.deserialize('"' + String.valueOf(latestPoint.get('timestamp')) + '"', Datetime.class);
                     }
 
-                    // 4. UPDATE TANK (Including Fuel Low Logic)
                     List<Tanks__c> tankToUpdate = [SELECT Id, Fuel_Limit__c FROM Tanks__c WHERE VIN__c = :vin LIMIT 1];
                     if (!tankToUpdate.isEmpty()) {
                         Tanks__c t = tankToUpdate[0];
-                        
-                        // Update Location
                         if (lat != null && lon != null) {
                             t.Location__Latitude__s = lat;
                             t.Location__Longitude__s = lon;
                         }
-                        
-                        // Consolidated Timestamp field
-                        t.Last_Use__c = liveTimestamp; 
-
-                        // Fuel Logic
+                        t.Last_Use__c = liveTimestamp;
                         if (foundFuel != null) {
                             t.Fuel_Level__c = foundFuel;
-                            
-                            // Check against custom limit (defaults to 15 if not set)
                             Decimal limitVal = (t.Fuel_Limit__c != null) ? t.Fuel_Limit__c : 15.0;
-                            t.Fuel_Low__c = (foundFuel <= limitVal); 
+                            t.Fuel_Low__c = (foundFuel <= limitVal);
                         }
-                        
                         update t;
                     }
                 }
@@ -100,9 +79,7 @@ global without sharing class BouncieWebhookService {
                 res.responseBody = Blob.valueOf('{"status":"ok", "action":"live_update"}');
                 return; 
             }
-            // =================================================================================
 
-            // HISTORICAL DATA HANDLING
             Map<String,Object> body;
             if (eventType == 'tripStart')      body = (Map<String,Object>) p.get('start');
             else if (eventType == 'tripEnd')   body = (Map<String,Object>) p.get('end');
@@ -112,6 +89,26 @@ global without sharing class BouncieWebhookService {
                 res.statusCode = 200;
                 res.responseBody = Blob.valueOf('{"status":"ok"}');
                 return;
+            }
+
+            // --- LOCATION TO TRIPS LOGIC ---
+            Tanks__c currentTank = [SELECT Id, Location__Latitude__s, Location__Longitude__s FROM Tanks__c WHERE VIN__c = :vin LIMIT 1];
+            if (eventType == 'tripStart') {
+                Trip__c newTrip = new Trip__c(
+                    Tank__c = currentTank.Id,
+                    Transaction__c = txn,
+                    Start_Time__c = System.now(),
+                    Location_Start__Latitude__s = currentTank.Location__Latitude__s,
+                    Location_Start__Longitude__s = currentTank.Location__Longitude__s
+                );
+                insert newTrip;
+            } else if (eventType == 'tripEnd') {
+                List<Trip__c> existingTrips = [SELECT Id FROM Trip__c WHERE Transaction__c = :txn LIMIT 1];
+                if (!existingTrips.isEmpty()) {
+                    existingTrips[0].Location_Stop__Latitude__s = currentTank.Location__Latitude__s;
+                    existingTrips[0].Location_Stop__Longitude__s = currentTank.Location__Longitude__s;
+                    update existingTrips[0];
+                }
             }
 
             Datetime ts = System.now();
@@ -142,13 +139,10 @@ global without sharing class BouncieWebhookService {
                 if (body.get('hardBrakingCounts') != null) ev.Hard_Brakes__c = Integer.valueOf(String.valueOf(body.get('hardBrakingCounts')));
                 if (body.get('hardAccelerationCounts') != null) ev.Hard_Accel__c = Integer.valueOf(String.valueOf(body.get('hardAccelerationCounts')));
             }
-
             upsert ev Event_Key__c;
-
         } catch (Exception e) {
             System.debug('Error processing Bouncie Webhook: ' + e.getMessage());
         }
-
         res.statusCode = 200;
         res.responseBody = Blob.valueOf('{"status":"ok"}');
     }
