@@ -21,7 +21,6 @@ global without sharing class TwilioWebhookService {
             String cleanIncoming = (digitsOnly.length() > 10) ? digitsOnly.right(10) : digitsOnly;
 
             // 2. CHECK: Is this from an ADMIN?
-            // UPDATED: Querying FirstName
             List<Contact> admins = [
                 SELECT Id, FirstName, MobilePhone 
                 FROM Contact 
@@ -34,9 +33,7 @@ global without sharing class TwilioWebhookService {
                 Contact c = admins[0];
                 String adminClean = c.MobilePhone.replaceAll('[^0-9]', '');
                 
-                // Strict match check
                 if (adminClean.endsWith(last4)) {
-                    // UPDATED: Pass the specific Admin's First Name
                     String adminName = (c.FirstName != null) ? c.FirstName : 'Admin';
                     handleAdminReply(messageBody, adminName);
                 } else {
@@ -65,14 +62,14 @@ global without sharing class TwilioWebhookService {
             ORDER BY CreatedDate DESC LIMIT 1
         ];
 
-        // Scenario 1: Unknown Number
+        // SCENARIO 1: UNKNOWN NUMBER
         if (bookings.isEmpty()) {
-            String autoMsg = 'Thank you for contacting BigMitzvah.org, this phone number is not monitored. Please email info@BigMitzvah.org for more information. Thank you and have a nice day.';
+            String autoMsg = 'Thank you for contacting BigMitzvah.org. This phone number is not monitored. Please email info@BigMitzvah.org for more information. Thank you and have a nice day.';
             TwilioService.sendSms(fullIncomingNumber, autoMsg); 
             return; 
         }
 
-        // Scenario 2: Driver Found
+        // SCENARIO 2: DRIVER FOUND
         Booking__c booking = bookings[0];
         Boolean isActive = (booking.Active__c == true);
         String noteType = isActive ? 'Message' : 'Feedback';
@@ -88,8 +85,9 @@ global without sharing class TwilioWebhookService {
         );
         insert newNote;
 
-        // 3. Conditional Forwarding
+        // 3. LOGIC BRANCH
         if (isActive) {
+            // A. ACTIVE BOOKING -> FORWARD TO ADMIN
             String firstName = (booking.Contact__r.FirstName != null) ? booking.Contact__r.FirstName : 'Driver';
             String driverFullPhone = booking.Contact__r.MobilePhone; 
 
@@ -104,24 +102,25 @@ global without sharing class TwilioWebhookService {
             for (Contact a : allAdmins) {
                 TwilioService.sendSms(a.MobilePhone, forwardMsg);
             }
+        } 
+        else {
+            // B. CLOSED BOOKING -> AUTO-REPLY (FEEDBACK RECEIVED)
+            String feedbackReply = 'Thank you for feedback. please note: this number is only live monitored for active drivers. For more information please contact info@BigMitzvah.org.';
+            TwilioService.sendSms(fullIncomingNumber, feedbackReply);
         }
     }
 
     // --- HELPER: Handle Admin -> Driver ---
-    // UPDATED: Now accepts 'adminName'
     private static void handleAdminReply(String body, String adminName) {
         Twilio_Settings__c settings = Twilio_Settings__c.getOrgDefaults();
         if (settings == null || String.isBlank(settings.Last_Driver_Phone__c)) return;
 
         String targetDriverPhone = settings.Last_Driver_Phone__c;
-        
-        // UPDATED: Uses the actual First Name (e.g., "[David]: ...")
         String replyMsg = '[' + adminName + ']: ' + body;
 
-        // 1. Send SMS
         TwilioService.sendSms(targetDriverPhone, replyMsg);
 
-        // 2. Save Admin Note
+        // Save Admin Note
         String targetLast4 = targetDriverPhone.replaceAll('[^0-9]', '');
         if (targetLast4.length() > 4) targetLast4 = targetLast4.right(4);
 
