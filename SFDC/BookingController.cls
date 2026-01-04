@@ -112,7 +112,7 @@ public with sharing class BookingController {
 
         // C. Send Admin Notification
         List<Contact> admins = [SELECT MobilePhone FROM Contact WHERE Admin__c = TRUE AND MobilePhone != null];
-        String adminMsg = firstName + ' has started a booking (' + newBooking.Name + '). You are listed as the contact number for support messages. Please keep an eye out for messages from the driver. Have a nice day.';
+        String adminMsg = firstName + ' has started Booking #' + newBooking.Name + '. You are listed as the contact number for support messages. Please keep an eye out for messages from the driver. Have a nice day.';
 
         for (Contact admin : admins) {
             TwilioService.sendSms(admin.MobilePhone, adminMsg);
