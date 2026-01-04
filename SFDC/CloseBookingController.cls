@@ -44,7 +44,7 @@ public with sharing class CloseBookingController {
 
         // 5. Send Specific Admin SMS
         // "Request to close Trip #TP0130 (from TNK770). Code: 4195"
-        String msg = 'Request to close Trip #' + bookingName + ' (from ' + tank.Name + '). Code: ' + passcode;
+        String msg = 'Confirmation code to close Booking #' + bookingName + ': ' + passcode;
         
         for (Contact admin : admins) {
             TwilioService.sendSms(admin.MobilePhone, msg);
