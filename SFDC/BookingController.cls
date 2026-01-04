@@ -44,13 +44,15 @@ public with sharing class BookingController {
         driver.OTP__c = passcode;
         driver.OTP_Exipre__c = System.now().addMinutes(5);
         update driver;
+        
         TwilioService.sendSms(driver.MobilePhone, 'Your BigMitzvah.org verification code is: ' + passcode);
+        
         this.passcodeSent = true;
         ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO, 'Passcode sent to ' + driver.MobilePhone));
     }
 
     public PageReference startBooking() {
-        // 1. Fetch Driver Name/Phone
+        // 1. Validate Passcode
         List<Contact> verifiedDriver = [
             SELECT Id, FirstName, MobilePhone 
             FROM Contact 
@@ -65,13 +67,14 @@ public with sharing class BookingController {
             return null;
         }
         
+        // 2. Lock & Validate Tank
         Tanks__c freshTank = [SELECT Id, Status__c, KM__c, Location__Latitude__s, Location__Longitude__s FROM Tanks__c WHERE Id = :tankRecord.Id FOR UPDATE];
         if (freshTank.Status__c != 'Open') {
             ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Sorry! This tank was just booked by someone else a moment ago.'));
             return null;
         }
         
-        // 2. Insert Booking
+        // 3. Create Booking
         Booking__c newBooking = new Booking__c(
             Contact__c = selectedContactId,
             Tank__c = freshTank.Id,
@@ -84,33 +87,32 @@ public with sharing class BookingController {
         );
         insert newBooking;
         
-        // 3. RE-QUERY to get the generated Name (e.g., TP-0130)
+        // 4. Refresh for Auto-Number
         newBooking = [SELECT Id, Name FROM Booking__c WHERE Id = :newBooking.Id];
         
-        // 4. Update Tank Status
+        // 5. Update Tank & Clear Driver OTP
         freshTank.Status__c = 'Booked';
         update freshTank;
         
-        // 5. Clear Passcode
         Contact driverToClear = new Contact(Id = selectedContactId, OTP__c = null, OTP_Exipre__c = null);
         update driverToClear;
 
+        // 6. Send SMS Notifications & Update Chat Context
         String firstName = (verifiedDriver[0].FirstName != null) ? verifiedDriver[0].FirstName : 'Driver';
 
-        // 6. SEND DRIVER SMS SEQUENCE
         if (verifiedDriver[0].MobilePhone != null) {
-            // Msg 1: Welcome
-            String welcomeMsg = 'Welcome to the BigMitzvah Tank ' + firstName + '! Have a safe drive. (Booking #' + newBooking.Name + ')';
-            TwilioService.sendSms(verifiedDriver[0].MobilePhone, welcomeMsg);
+            // A. Send Welcome SMS
+            String combinedMsg = 'Welcome to the BigMitzvah Tank, ' + firstName + '! (Booking #' + newBooking.Name + ') Have a safe drive.\n\nNote: Please text this number for any support or assistance.';
+            TwilioService.sendSms(verifiedDriver[0].MobilePhone, combinedMsg);
 
-            // Msg 2: Instructions
-            String helpMsg = 'Note: Please text this number for any support or assistance.';
-            TwilioService.sendSms(verifiedDriver[0].MobilePhone, helpMsg);
+            // B. UPDATE CHAT CONTEXT (Critical Fix)
+            // This ensures the system immediately knows to route your texts to THIS driver.
+            TwilioService.updateChatContext(verifiedDriver[0].MobilePhone);
         }
 
-        // 7. SEND ADMIN NOTIFICATION (Added)
+        // C. Send Admin Notification
         List<Contact> admins = [SELECT MobilePhone FROM Contact WHERE Admin__c = TRUE AND MobilePhone != null];
-        String adminMsg = firstName + ' has started a booking (' + newBooking.Name + '). You are listed as the admin for support. Have a nice day.';
+        String adminMsg = firstName + ' has started a booking (' + newBooking.Name + '). You are listed as the contact number for support messages. Please keep an eye out for messages from the driver. Have a nice day.';
 
         for (Contact admin : admins) {
             TwilioService.sendSms(admin.MobilePhone, adminMsg);
