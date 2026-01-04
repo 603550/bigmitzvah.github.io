@@ -3,9 +3,10 @@ global class BookingCleanupScheduler implements Schedulable {
     global void execute(SchedulableContext ctx) {
         
         // 1. Fetch Active, Unflagged bookings that have a limit set
+        // Added: Contact__r.Name (Full Name) and Contact__r.MobilePhone
         List<Booking__c> activeBookings = [
             SELECT Id, Name, Start_Time__c, Days_Limit__c, 
-                   Contact__r.FirstName 
+                   Contact__r.Name, Contact__r.MobilePhone 
             FROM Booking__c 
             WHERE Active__c = TRUE 
             AND Flag__c = FALSE 
@@ -22,7 +23,6 @@ global class BookingCleanupScheduler implements Schedulable {
         for (Booking__c b : activeBookings) {
             
             // Calculate the specific deadline for THIS booking
-            // e.g. Start Time + 2 Days
             Integer limitDays = Integer.valueOf(b.Days_Limit__c);
             Datetime deadline = b.Start_Time__c.addDays(limitDays);
             
@@ -31,11 +31,11 @@ global class BookingCleanupScheduler implements Schedulable {
                 b.Flag__c = TRUE; // Check the box
                 bookingsToUpdate.add(b);
                 
-                // Send SMS Alert to All Admins
-                String msg = 'Alert: Booking #' + b.Name + ' (' + b.Contact__r.FirstName + ') has exceeded its ' + limitDays + '-day limit.';
+                // New Format: Alert: Booking #BK0800 (David Kakon, (514) 574-0233) has exceeded its 0-day limit.
+                String contactInfo = b.Contact__r.Name + ', ' + b.Contact__r.MobilePhone;
+                String msg = 'Alert: Booking #' + b.Name + ' (' + contactInfo + ') has exceeded its ' + limitDays + '-day limit.';
                 
                 for (Contact admin : admins) {
-                    // Call the future method to send text
                     TwilioService.sendSms(admin.MobilePhone, msg);
                 }
             }
