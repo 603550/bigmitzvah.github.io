@@ -1,7 +1,6 @@
 @RestResource(urlMapping='/BouncieWebhook/*')
 global without sharing class BouncieWebhookService {
 
-    // Unit conversions
     private static final Decimal MILES_TO_KM   = 1.609344;
     private static final Decimal MPH_TO_KMH    = 1.609344;
     private static final Decimal GAL_TO_LITERS = 3.78541;
@@ -13,7 +12,6 @@ global without sharing class BouncieWebhookService {
         RestResponse res = RestContext.response;
         res.addHeader('Content-Type', 'application/json');
 
-        // --- AUTHENTICATION ---
         String key = req.headers.get('x-bouncie-authorization');
         if (String.isBlank(key)) key = req.headers.get('x-api-key');
         if (String.isBlank(key)) key = req.headers.get('Authorization');
@@ -30,10 +28,10 @@ global without sharing class BouncieWebhookService {
             Map<String,Object> root = (Map<String,Object>) JSON.deserializeUntyped(raw);
             Map<String,Object> p = root.containsKey('payload') ? (Map<String,Object>) root.get('payload') : root;
 
-            String eventType = (p.get('eventType') == null) ? null : String.valueOf(p.get('eventType'));
-            String vin       = (p.get('vin') == null) ? null : String.valueOf(p.get('vin'));
-            String txn       = (p.get('transactionId') == null) ? null : String.valueOf(p.get('transactionId'));
-            String imei      = (p.get('imei') == null) ? null : String.valueOf(p.get('imei'));
+            String eventType = String.valueOf(p.get('eventType'));
+            String vin       = String.valueOf(p.get('vin'));
+            String txn       = String.valueOf(p.get('transactionId'));
+            String imei      = String.valueOf(p.get('imei'));
 
             if (String.isBlank(eventType) || String.isBlank(txn)) {
                 res.statusCode = 200;
@@ -42,7 +40,7 @@ global without sharing class BouncieWebhookService {
             }
 
             // =================================================================================
-            // 1. LIVE TRACKING LOGIC (tripData) - RESTORED ROBUST VERSION
+            // 1. LIVE TRACKING LOGIC (tripData)
             // =================================================================================
             if (eventType == 'tripData') {
                 List<Object> dataList = (List<Object>) p.get('data');
@@ -50,34 +48,22 @@ global without sharing class BouncieWebhookService {
                     Map<String,Object> latestPoint = (Map<String,Object>) dataList[dataList.size() - 1];
                     Map<String,Object> gps = (Map<String,Object>) latestPoint.get('gps');
                     
-                    Double lat = (gps != null) ? (Double) gps.get('lat') : null;
-                    Double lon = (gps != null) ? (Double) gps.get('lon') : null;
+                    Tanks__c t = [SELECT Id, Fuel_Limit__c FROM Tanks__c WHERE VIN__c = :vin LIMIT 1];
+                    if (gps != null) {
+                        t.Location__Latitude__s = (Double) gps.get('lat');
+                        t.Location__Longitude__s = (Double) gps.get('lon');
+                    }
                     
-                    Decimal foundFuel = null;
                     for (Object obj : dataList) {
                         Map<String,Object> pt = (Map<String,Object>) obj;
                         if (pt.containsKey('fuelLevelInput')) {
-                            foundFuel = Decimal.valueOf(String.valueOf(pt.get('fuelLevelInput')));
-                        }
-                    }
-
-                    Datetime liveTimestamp = safeParseIsoDatetime(String.valueOf(latestPoint.get('timestamp')), System.now());
-
-                    List<Tanks__c> tankList = [SELECT Id, Fuel_Limit__c FROM Tanks__c WHERE VIN__c = :vin LIMIT 1];
-                    if (!tankList.isEmpty()) {
-                        Tanks__c t = tankList[0];
-                        if (lat != null && lon != null) {
-                            t.Location__Latitude__s = lat;
-                            t.Location__Longitude__s = lon;
-                        }
-                        t.Last_Use__c = liveTimestamp; 
-                        if (foundFuel != null) {
-                            t.Fuel_Level__c = foundFuel;
+                            t.Fuel_Level__c = Decimal.valueOf(String.valueOf(pt.get('fuelLevelInput')));
                             Decimal limitVal = (t.Fuel_Limit__c != null) ? t.Fuel_Limit__c : 15.0;
-                            t.Fuel_Low__c = (foundFuel <= limitVal); 
+                            t.Fuel_Low__c = (t.Fuel_Level__c <= limitVal);
                         }
-                        update t;
                     }
+                    t.Last_Use__c = safeParseIsoDatetime(String.valueOf(latestPoint.get('timestamp')), System.now());
+                    update t;
                 }
                 res.statusCode = 200;
                 res.responseBody = Blob.valueOf('{"status":"ok", "action":"live_update"}');
@@ -99,9 +85,19 @@ global without sharing class BouncieWebhookService {
             Datetime ts = safeParseIsoDatetime(String.valueOf(body.get('timestamp')), System.now());
             Tanks__c currentTank = [SELECT Id, Location__Latitude__s, Location__Longitude__s FROM Tanks__c WHERE VIN__c = :vin LIMIT 1];
 
-            // 2a. Update the Main Trip__c Record (GPS/Fuel Logic)
-            List<Trip__c> existingTrips = [SELECT Id FROM Trip__c WHERE Transaction__c = :txn LIMIT 1];
-            Trip__c targetTrip = (!existingTrips.isEmpty()) ? existingTrips[0] : new Trip__c(Transaction__c = txn, Tank__c = currentTank.Id);
+            // 2a. Update the Main Trip__c Record
+            List<Trip__c> tripRecs = [SELECT Id, Transaction__c FROM Trip__c WHERE Transaction__c = :txn LIMIT 1];
+            
+            // --- THE FIX: Ensure we have a valid object for Upsert ---
+            Trip__c targetTrip;
+            if (!tripRecs.isEmpty()) {
+                targetTrip = tripRecs[0];
+            } else {
+                targetTrip = new Trip__c(Transaction__c = txn, Tank__c = currentTank.Id);
+            }
+            // Ensure External ID is set in memory so Upsert doesn't crash
+            targetTrip.Transaction__c = txn; 
+            // ---------------------------------------------------------
 
             if (eventType == 'tripStart') {
                 targetTrip.Location_Start__Latitude__s = currentTank.Location__Latitude__s;
@@ -126,7 +122,7 @@ global without sharing class BouncieWebhookService {
             upsert targetTrip Transaction__c;
 
             // =================================================================================
-            // 3. EVENT AUDIT LOGGING (With RESTORED Duplicate Odometer Protection)
+            // 3. EVENT AUDIT LOGGING (With Odometer Protection)
             // =================================================================================
             String tsKey = String.valueOf(ts.getTime() / 1000);
             String eventKey = txn + '|' + eventType + '|' + tsKey;
@@ -153,7 +149,6 @@ global without sharing class BouncieWebhookService {
                 ev.Hard_Accel__c = targetTrip.Hard_Accel__c;
             }
 
-            // RESTORED: ODOMETER PROTECTION (Keep the higher value if duplicate event arrives)
             if (eventType == 'tripEnd' && ev.odometer__c != null) {
                 List<Trip_Event__c> existing = [SELECT Id, odometer__c FROM Trip_Event__c WHERE Event_Key__c = :eventKey LIMIT 1];
                 if (!existing.isEmpty() && existing[0].odometer__c != null && existing[0].odometer__c > ev.odometer__c) {
@@ -171,7 +166,6 @@ global without sharing class BouncieWebhookService {
         res.responseBody = Blob.valueOf('{"status":"ok"}');
     }
 
-    // RESTORED: HELPER METHOD
     private static Datetime safeParseIsoDatetime(String iso, Datetime fallback) {
         try {
             return (Datetime) JSON.deserialize('"' + iso + '"', Datetime.class);
