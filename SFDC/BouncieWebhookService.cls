@@ -54,14 +54,31 @@ global without sharing class BouncieWebhookService {
                         t.Location__Longitude__s = (Double) gps.get('lon');
                     }
                     
+                    // --- CHANGED LOGIC START: ABSOLUTE LOWEST VALUE ---
+                    // We scan the whole list. We don't care about speed.
+                    // We just want the lowest fuel number reported in this batch.
+                    Decimal lowestFuel = null;
+
                     for (Object obj : dataList) {
                         Map<String,Object> pt = (Map<String,Object>) obj;
                         if (pt.containsKey('fuelLevelInput')) {
-                            t.Fuel_Level__c = Decimal.valueOf(String.valueOf(pt.get('fuelLevelInput')));
-                            Decimal limitVal = (t.Fuel_Limit__c != null) ? t.Fuel_Limit__c : 15.0;
-                            t.Fuel_Low__c = (t.Fuel_Level__c <= limitVal);
+                            Decimal currentFuel = Decimal.valueOf(String.valueOf(pt.get('fuelLevelInput')));
+                            
+                            // Check if this is the new lowest value (or the first one we've seen)
+                            if (lowestFuel == null || currentFuel < lowestFuel) {
+                                lowestFuel = currentFuel;
+                            }
                         }
                     }
+
+                    // Apply the lowest value found
+                    if (lowestFuel != null) {
+                        t.Fuel_Level__c = lowestFuel;
+                        Decimal limitVal = (t.Fuel_Limit__c != null) ? t.Fuel_Limit__c : 15.0;
+                        t.Fuel_Low__c = (t.Fuel_Level__c <= limitVal);
+                    }
+                    // --- CHANGED LOGIC END ---
+
                     t.Last_Use__c = safeParseIsoDatetime(String.valueOf(latestPoint.get('timestamp')), System.now());
                     update t;
                 }
