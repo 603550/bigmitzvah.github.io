@@ -50,16 +50,27 @@ public with sharing class BookingController {
     }
 
     public PageReference startBooking() {
-        List<Contact> verifiedDriver = [SELECT Id FROM Contact WHERE Id = :selectedContactId AND OTP__c = :enteredPasscode AND OTP_Exipre__c > :System.now() LIMIT 1];
+        // 1. UPDATED QUERY: Added FirstName and MobilePhone so we can send the Welcome SMS
+        List<Contact> verifiedDriver = [
+            SELECT Id, FirstName, MobilePhone 
+            FROM Contact 
+            WHERE Id = :selectedContactId 
+            AND OTP__c = :enteredPasscode 
+            AND OTP_Exipre__c > :System.now() 
+            LIMIT 1
+        ];
+        
         if (verifiedDriver.isEmpty()) {
             ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Invalid or expired passcode.'));
             return null;
         }
+        
         Tanks__c freshTank = [SELECT Id, Status__c, KM__c, Location__Latitude__s, Location__Longitude__s FROM Tanks__c WHERE Id = :tankRecord.Id FOR UPDATE];
         if (freshTank.Status__c != 'Open') {
             ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Sorry! This tank was just booked by someone else a moment ago.'));
             return null;
         }
+        
         Booking__c newBooking = new Booking__c(
             Contact__c = selectedContactId,
             Tank__c = freshTank.Id,
@@ -72,10 +83,20 @@ public with sharing class BookingController {
             Location_Start__Longitude__s = freshTank.Location__Longitude__s
         );
         insert newBooking;
+        
         freshTank.Status__c = 'Booked';
         update freshTank;
+        
         Contact driverToClear = new Contact(Id = selectedContactId, OTP__c = null, OTP_Exipre__c = null);
         update driverToClear;
+
+        // 2. SEND WELCOME SMS
+        if (verifiedDriver[0].MobilePhone != null) {
+            String firstName = (verifiedDriver[0].FirstName != null) ? verifiedDriver[0].FirstName : 'Driver';
+            String msg = 'Welcome to the BigMitzvah Tank ' + firstName + '! Have a safe drive.';
+            TwilioService.sendSms(verifiedDriver[0].MobilePhone, msg);
+        }
+
         return new PageReference('/' + freshTank.Id);
     }
 }
