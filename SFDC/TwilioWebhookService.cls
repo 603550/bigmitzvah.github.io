@@ -35,7 +35,8 @@ global without sharing class TwilioWebhookService {
                 
                 if (adminClean.endsWith(last4)) {
                     String adminName = (c.FirstName != null) ? c.FirstName : 'Admin';
-                    handleAdminReply(messageBody, adminName);
+                    // Pass the sender's phone to avoid echoing back to themselves
+                    handleAdminReply(messageBody, adminName, c.MobilePhone);
                 } else {
                     handleDriverMessage(last4, messageBody, cleanIncoming);
                 }
@@ -54,7 +55,6 @@ global without sharing class TwilioWebhookService {
     // --- HELPER: Handle Driver -> Admin ---
     private static void handleDriverMessage(String phoneLast4, String body, String fullIncomingNumber) {
         
-        // 1. Find Booking
         List<Booking__c> bookings = [
             SELECT Id, Contact__r.FirstName, Contact__r.MobilePhone, Tank__r.Name, Active__c, Status__c, Contact__c, Tank__c
             FROM Booking__c 
@@ -62,19 +62,18 @@ global without sharing class TwilioWebhookService {
             ORDER BY CreatedDate DESC LIMIT 1
         ];
 
-        // SCENARIO 1: UNKNOWN NUMBER
+        // Scenario 1: Unknown Number
         if (bookings.isEmpty()) {
             String autoMsg = 'Thank you for contacting BigMitzvah.org. This phone number is not monitored. Please email info@BigMitzvah.org for more information. Thank you and have a nice day.';
             TwilioService.sendSms(fullIncomingNumber, autoMsg); 
             return; 
         }
 
-        // SCENARIO 2: DRIVER FOUND
+        // Scenario 2: Driver Found
         Booking__c booking = bookings[0];
         Boolean isActive = (booking.Active__c == true);
         String noteType = isActive ? 'Message' : 'Feedback';
 
-        // 2. Always Save Note
         Note__c newNote = new Note__c(
             Booking__c = booking.Id,
             Contact__c = booking.Contact__c,
@@ -85,16 +84,12 @@ global without sharing class TwilioWebhookService {
         );
         insert newNote;
 
-        // 3. LOGIC BRANCH
         if (isActive) {
-            // A. ACTIVE BOOKING -> FORWARD TO ADMIN
             String firstName = (booking.Contact__r.FirstName != null) ? booking.Contact__r.FirstName : 'Driver';
             String driverFullPhone = booking.Contact__r.MobilePhone; 
 
-            Twilio_Settings__c settings = Twilio_Settings__c.getOrgDefaults();
-            if (settings == null) settings = new Twilio_Settings__c();
-            settings.Last_Driver_Phone__c = driverFullPhone; 
-            upsert settings;
+            // Update Chat Context
+            TwilioService.updateChatContext(driverFullPhone);
 
             String forwardMsg = '[' + firstName + ']: ' + body;
             
@@ -104,23 +99,36 @@ global without sharing class TwilioWebhookService {
             }
         } 
         else {
-            // B. CLOSED BOOKING -> AUTO-REPLY (FEEDBACK RECEIVED)
-            String feedbackReply = 'Thank you for feedback. please note: this number is only live monitored for active drivers. For more information please contact info@BigMitzvah.org.';
+            String feedbackReply = 'Thank you for contacting BigMitzvah.org. This number is only monitored for active drivers. For more information please contact info@BigMitzvah.org.';
             TwilioService.sendSms(fullIncomingNumber, feedbackReply);
         }
     }
 
-    // --- HELPER: Handle Admin -> Driver ---
-    private static void handleAdminReply(String body, String adminName) {
+    // --- HELPER: Handle Admin -> Driver (WITH MIRRORING) ---
+    private static void handleAdminReply(String body, String adminName, String senderPhone) {
         Twilio_Settings__c settings = Twilio_Settings__c.getOrgDefaults();
         if (settings == null || String.isBlank(settings.Last_Driver_Phone__c)) return;
 
         String targetDriverPhone = settings.Last_Driver_Phone__c;
         String replyMsg = '[' + adminName + ']: ' + body;
 
+        // 1. Send to Driver
         TwilioService.sendSms(targetDriverPhone, replyMsg);
 
-        // Save Admin Note
+        // 2. NEW: Mirror to OTHER Admins (so they see the reply)
+        List<Contact> otherAdmins = [
+            SELECT MobilePhone 
+            FROM Contact 
+            WHERE Admin__c = TRUE 
+            AND MobilePhone != null 
+            AND MobilePhone != :senderPhone // Don't text the admin who just replied
+        ];
+
+        for (Contact other : otherAdmins) {
+            TwilioService.sendSms(other.MobilePhone, replyMsg);
+        }
+
+        // 3. Save Note
         String targetLast4 = targetDriverPhone.replaceAll('[^0-9]', '');
         if (targetLast4.length() > 4) targetLast4 = targetLast4.right(4);
 
