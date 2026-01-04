@@ -10,16 +10,21 @@ public with sharing class CloseBookingController {
     }
 
     public void sendPasscode() {
+        // 1. Safety Check: Don't close if engine is running (Active Trip)
         List<Trip__c> activeTrips = [SELECT Id FROM Trip__c WHERE Booking__r.Tank__c = :tank.Id AND Booking__r.Active__c = TRUE AND Active__c = TRUE LIMIT 1];
         if (!activeTrips.isEmpty()) {
             ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Error: Active trip running.'));
             return;
         }
+
+        // 2. Find Admins
         List<Contact> admins = [SELECT Id, MobilePhone FROM Contact WHERE Admin__c = TRUE AND MobilePhone != null];
         if (admins.isEmpty()) {
             ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'No admins found.'));
             return;
         }
+
+        // 3. Generate Code
         String passcode = String.valueOf(Integer.valueOf(Math.random() * 9000) + 1000);
         List<Contact> contactsToUpdate = new List<Contact>();
         for (Contact admin : admins) {
@@ -28,9 +33,13 @@ public with sharing class CloseBookingController {
             contactsToUpdate.add(admin);
         }
         update contactsToUpdate;
+
+        // 4. Send Admin SMS (Specific Tank Name)
         for (Contact admin : admins) {
-            TwilioService.sendSms(admin.MobilePhone, 'Code: ' + passcode);
+            String msg = 'Request to CLOSE booking for ' + tank.Name + '. Code: ' + passcode;
+            TwilioService.sendSms(admin.MobilePhone, msg);
         }
+        
         passcodeSent = true;
     }
 
@@ -41,7 +50,7 @@ public with sharing class CloseBookingController {
             return null;
         }
         
-        // 1. ADDED MobilePhone and FirstName to query so we can send the SMS
+        // Fetch Booking (Need Name & Phone for Customer SMS)
         List<Booking__c> activeBookings = [
             SELECT Id, Contact__r.MobilePhone, Contact__r.FirstName, Contact__c, Admin__c, Start_Time__c, KM_Start__c 
             FROM Booking__c 
@@ -51,10 +60,11 @@ public with sharing class CloseBookingController {
         
         if (activeBookings.isEmpty()) { return null; }
         
+        // Snapshot Tank Data
         Tanks__c currentTankState = [SELECT KM__c, Location__Latitude__s, Location__Longitude__s FROM Tanks__c WHERE Id = :tank.Id LIMIT 1];
         Booking__c bookingToClose = activeBookings[0];
         
-        // Update Booking
+        // Close Booking
         bookingToClose.Active__c = false;
         bookingToClose.End_Time__c = System.now();
         bookingToClose.Status__c = 'Closed';
@@ -72,10 +82,10 @@ public with sharing class CloseBookingController {
         Decimal fuelSum = (Decimal)tripResults[0].get('totalFuel');
         if (fuelSum == null) fuelSum = 0;
 
-        // Re-query to get calculated formula fields like Total_Days__c
+        // Re-query for calculated fields
         Booking__c closedBooking = [SELECT Id, Contact__c, Admin__c, Start_Time__c, End_Time__c, Total_KM__c, Total_Days__c, Tank__c, KM_Start__c, KM_End__c FROM Booking__c WHERE Id = :bookingToClose.Id];
         
-        // Create Charge
+        // Generate Charge & Send Customer SMS
         if (closedBooking.Admin__c == false) {
             Gasoline__c gasSettings = Gasoline__c.getOrgDefaults();
             Charge__c newCharge = new Charge__c(
@@ -97,16 +107,18 @@ public with sharing class CloseBookingController {
             }
             insert newCharge;
 
-            // ---------------------------------------------------------
-            // 2. THE RESTORED SMS LOGIC
-            // ---------------------------------------------------------
+            // --- SEND CUSTOMER FEEDBACK SMS ---
             if (bookingToClose.Contact__r.MobilePhone != null) {
-                String feedbackMessage = 'Thank you for driving with BigMitzvah.org! Total Days: ' + closedBooking.Total_Days__c + '. How was your experience?';
+                String firstName = (bookingToClose.Contact__r.FirstName != null) ? bookingToClose.Contact__r.FirstName : 'Driver';
+                
+                // "Thank you for driving with BigMitzvah.org David! How was your experience? Let us know by replying to this text."
+                String feedbackMessage = 'Thank you for driving with BigMitzvah.org ' + firstName + '! How was your experience? Let us know by replying to this text.';
+                
                 TwilioService.sendSms(bookingToClose.Contact__r.MobilePhone, feedbackMessage);
             }
         }
 
-        // Cleanup Admin OTPs
+        // Cleanup Admins
         List<Contact> allAdmins = [SELECT Id FROM Contact WHERE Admin__c = TRUE];
         for(Contact a : allAdmins) {
             a.OTP__c = null; a.OTP_Exipre__c = null;
