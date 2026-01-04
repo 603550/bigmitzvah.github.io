@@ -50,7 +50,7 @@ public with sharing class BookingController {
     }
 
     public PageReference startBooking() {
-        // 1. UPDATED QUERY: Added FirstName and MobilePhone so we can send the Welcome SMS
+        // 1. Fetch Driver Name/Phone
         List<Contact> verifiedDriver = [
             SELECT Id, FirstName, MobilePhone 
             FROM Contact 
@@ -71,6 +71,7 @@ public with sharing class BookingController {
             return null;
         }
         
+        // 2. Insert Booking
         Booking__c newBooking = new Booking__c(
             Contact__c = selectedContactId,
             Tank__c = freshTank.Id,
@@ -78,22 +79,29 @@ public with sharing class BookingController {
             Active__c = TRUE,
             Status__c = 'Open',
             KM_Start__c = (freshTank.KM__c != null ? freshTank.KM__c : 0),
-            // SNAPSHOT TANK LOCATION TO BOOKING START
             Location_Start__Latitude__s = freshTank.Location__Latitude__s,
             Location_Start__Longitude__s = freshTank.Location__Longitude__s
         );
         insert newBooking;
         
+        // 3. RE-QUERY to get the generated Name (e.g., TP-0130)
+        newBooking = [SELECT Id, Name FROM Booking__c WHERE Id = :newBooking.Id];
+        
+        // 4. Update Tank Status
         freshTank.Status__c = 'Booked';
         update freshTank;
         
+        // 5. Clear Passcode
         Contact driverToClear = new Contact(Id = selectedContactId, OTP__c = null, OTP_Exipre__c = null);
         update driverToClear;
 
-        // 2. SEND WELCOME SMS
+        // 6. SEND WELCOME SMS (With Trip #)
         if (verifiedDriver[0].MobilePhone != null) {
             String firstName = (verifiedDriver[0].FirstName != null) ? verifiedDriver[0].FirstName : 'Driver';
-            String msg = 'Welcome to the BigMitzvah Tank ' + firstName + '! Have a safe drive.';
+            
+            // "Welcome to the BigMitzvah Tank David! Have a safe drive. (Trip #TP-0130)"
+            String msg = 'Welcome to the BigMitzvah Tank ' + firstName + '! Have a safe drive. (Trip #' + newBooking.Name + ')';
+            
             TwilioService.sendSms(verifiedDriver[0].MobilePhone, msg);
         }
 
