@@ -40,28 +40,42 @@ public with sharing class CloseBookingController {
             ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Invalid.'));
             return null;
         }
-        List<Booking__c> activeBookings = [SELECT Id, Contact__r.MobilePhone, Contact__c, Admin__c, Start_Time__c, KM_Start__c FROM Booking__c WHERE Tank__c = :tank.Id AND Active__c = TRUE LIMIT 1];
+        
+        // 1. ADDED MobilePhone and FirstName to query so we can send the SMS
+        List<Booking__c> activeBookings = [
+            SELECT Id, Contact__r.MobilePhone, Contact__r.FirstName, Contact__c, Admin__c, Start_Time__c, KM_Start__c 
+            FROM Booking__c 
+            WHERE Tank__c = :tank.Id AND Active__c = TRUE 
+            LIMIT 1
+        ];
+        
         if (activeBookings.isEmpty()) { return null; }
         
         Tanks__c currentTankState = [SELECT KM__c, Location__Latitude__s, Location__Longitude__s FROM Tanks__c WHERE Id = :tank.Id LIMIT 1];
         Booking__c bookingToClose = activeBookings[0];
+        
+        // Update Booking
         bookingToClose.Active__c = false;
         bookingToClose.End_Time__c = System.now();
         bookingToClose.Status__c = 'Closed';
         bookingToClose.KM_End__c = currentTankState.KM__c;
-        // SNAPSHOT TANK LOCATION TO BOOKING STOP
         bookingToClose.Location_Stop__Latitude__s = currentTankState.Location__Latitude__s;
         bookingToClose.Location_Stop__Longitude__s = currentTankState.Location__Longitude__s;
         update bookingToClose;
 
+        // Reset Tank
         Tanks__c tankToUpdate = new Tanks__c(Id = tank.Id, Status__c = 'Open');
         update tankToUpdate;
 
+        // Calc Fuel
         AggregateResult[] tripResults = [SELECT SUM(Total_Fuel__c) totalFuel FROM Trip__c WHERE Booking__c = :bookingToClose.Id];
         Decimal fuelSum = (Decimal)tripResults[0].get('totalFuel');
         if (fuelSum == null) fuelSum = 0;
 
+        // Re-query to get calculated formula fields like Total_Days__c
         Booking__c closedBooking = [SELECT Id, Contact__c, Admin__c, Start_Time__c, End_Time__c, Total_KM__c, Total_Days__c, Tank__c, KM_Start__c, KM_End__c FROM Booking__c WHERE Id = :bookingToClose.Id];
+        
+        // Create Charge
         if (closedBooking.Admin__c == false) {
             Gasoline__c gasSettings = Gasoline__c.getOrgDefaults();
             Charge__c newCharge = new Charge__c(
@@ -82,8 +96,17 @@ public with sharing class CloseBookingController {
                 newCharge.Fuel_Rate__c = gasSettings.Gas_Price__c;
             }
             insert newCharge;
+
+            // ---------------------------------------------------------
+            // 2. THE RESTORED SMS LOGIC
+            // ---------------------------------------------------------
+            if (bookingToClose.Contact__r.MobilePhone != null) {
+                String feedbackMessage = 'Thank you for driving with BigMitzvah.org! Total Days: ' + closedBooking.Total_Days__c + '. How was your experience?';
+                TwilioService.sendSms(bookingToClose.Contact__r.MobilePhone, feedbackMessage);
+            }
         }
 
+        // Cleanup Admin OTPs
         List<Contact> allAdmins = [SELECT Id FROM Contact WHERE Admin__c = TRUE];
         for(Contact a : allAdmins) {
             a.OTP__c = null; a.OTP_Exipre__c = null;
