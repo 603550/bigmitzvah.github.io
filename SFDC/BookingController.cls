@@ -100,7 +100,7 @@ public with sharing class BookingController {
             String firstName = (verifiedDriver[0].FirstName != null) ? verifiedDriver[0].FirstName : 'Driver';
             
             // "Welcome to the BigMitzvah Tank David! Have a safe drive. (Trip #TP-0130)"
-            String msg = 'Welcome to the BigMitzvah Tank ' + firstName + '! Have a safe drive. (Trip #' + newBooking.Name + ')';
+            String msg = 'Welcome to the BigMitzvah Tank ' + firstName + '! Have a safe drive. (Booking #' + newBooking.Name + ')';
             
             TwilioService.sendSms(verifiedDriver[0].MobilePhone, msg);
         }
