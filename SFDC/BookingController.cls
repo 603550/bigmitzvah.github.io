@@ -95,14 +95,25 @@ public with sharing class BookingController {
         Contact driverToClear = new Contact(Id = selectedContactId, OTP__c = null, OTP_Exipre__c = null);
         update driverToClear;
 
-        // 6. SEND WELCOME SMS (With Trip #)
+        String firstName = (verifiedDriver[0].FirstName != null) ? verifiedDriver[0].FirstName : 'Driver';
+
+        // 6. SEND DRIVER SMS SEQUENCE
         if (verifiedDriver[0].MobilePhone != null) {
-            String firstName = (verifiedDriver[0].FirstName != null) ? verifiedDriver[0].FirstName : 'Driver';
-            
-            // "Welcome to the BigMitzvah Tank David! Have a safe drive. (Trip #TP-0130)"
-            String msg = 'Welcome to the BigMitzvah Tank ' + firstName + '! Have a safe drive. (Booking #' + newBooking.Name + ')';
-            
-            TwilioService.sendSms(verifiedDriver[0].MobilePhone, msg);
+            // Msg 1: Welcome
+            String welcomeMsg = 'Welcome to the BigMitzvah Tank ' + firstName + '! Have a safe drive. (Booking #' + newBooking.Name + ')';
+            TwilioService.sendSms(verifiedDriver[0].MobilePhone, welcomeMsg);
+
+            // Msg 2: Instructions
+            String helpMsg = 'Note: Please text this number for any support or assistance.';
+            TwilioService.sendSms(verifiedDriver[0].MobilePhone, helpMsg);
+        }
+
+        // 7. SEND ADMIN NOTIFICATION (Added)
+        List<Contact> admins = [SELECT MobilePhone FROM Contact WHERE Admin__c = TRUE AND MobilePhone != null];
+        String adminMsg = firstName + ' has started a booking (' + newBooking.Name + '). You are listed as the admin for support. Have a nice day.';
+
+        for (Contact admin : admins) {
+            TwilioService.sendSms(admin.MobilePhone, adminMsg);
         }
 
         return new PageReference('/' + freshTank.Id);
