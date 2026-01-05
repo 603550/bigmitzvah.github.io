@@ -3,6 +3,4 @@ System.schedule('BigMitzvah Daily Update', '0 0 9 * * ?', new DailyStatusSchedul
 
 
 //TURN OFF
-for (CronTrigger job : [SELECT Id FROM CronTrigger WHERE CronJobDetail.Name LIKE '%BigMitzvah%']) {
-    System.abortJob(job.Id);
-}
+System.abortJob('08eak00000amI69');
