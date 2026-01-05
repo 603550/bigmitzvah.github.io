@@ -1,2 +1,8 @@
 // Schedule "BigMitzvah Daily Update" to run every day at 9:00 AM
 System.schedule('BigMitzvah Daily Update', '0 0 9 * * ?', new DailyStatusScheduler());
+
+
+//TURN OFF
+for (CronTrigger job : [SELECT Id FROM CronTrigger WHERE CronJobDetail.Name LIKE '%BigMitzvah%']) {
+    System.abortJob(job.Id);
+}
