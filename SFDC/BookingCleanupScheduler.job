@@ -1,5 +1,0 @@
-// This schedules the job to run at the top of every hour (1:00, 2:00, 3:00...)
-System.schedule('Hourly Booking Limit Check', '0 0 * * * ?', new BookingCleanupScheduler());
-
-//TURN OFF
-System.abortJob('08eak00000amNTy');
