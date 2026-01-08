@@ -10,18 +10,29 @@ public with sharing class CloseBookingController {
     }
 
     public void sendPasscode() {
-        // ... (No changes to sendPasscode logic) ...
-        // Keeping this section brief to focus on the fix below
+        // 1. Safety Check
         List<Trip__c> activeTrips = [SELECT Id FROM Trip__c WHERE Booking__r.Tank__c = :tank.Id AND Booking__r.Active__c = TRUE AND Active__c = TRUE LIMIT 1];
-        if (!activeTrips.isEmpty()) { ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Error: Active trip running.')); return; }
+        if (!activeTrips.isEmpty()) {
+            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Error: Active trip running.'));
+            return;
+        }
 
+        // 2. Fetch Booking Name
         List<Booking__c> currentBookings = [SELECT Name FROM Booking__c WHERE Tank__c = :tank.Id AND Active__c = TRUE LIMIT 1];
-        if (currentBookings.isEmpty()) { ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'No active booking found to close.')); return; }
-        
+        if (currentBookings.isEmpty()) {
+            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'No active booking found to close.'));
+            return;
+        }
         String bookingName = currentBookings[0].Name;
-        List<Contact> admins = [SELECT Id, MobilePhone FROM Contact WHERE Admin__c = TRUE AND MobilePhone != null];
-        if (admins.isEmpty()) { ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'No admins found.')); return; }
 
+        // 3. Find Admins
+        List<Contact> admins = [SELECT Id, MobilePhone FROM Contact WHERE Admin__c = TRUE AND MobilePhone != null];
+        if (admins.isEmpty()) {
+            ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'No admins found.'));
+            return;
+        }
+
+        // 4. Generate Code
         String passcode = String.valueOf(Integer.valueOf(Math.random() * 9000) + 1000);
         List<Contact> contactsToUpdate = new List<Contact>();
         for (Contact admin : admins) {
@@ -31,9 +42,17 @@ public with sharing class CloseBookingController {
         }
         update contactsToUpdate;
 
+        // 5. Send Code to ALL Admins
+        // Added Salt (Ref) at the end to bypass spam filters
         String salt = String.valueOf(System.currentTimeMillis()).right(5);
+        
+        // Exact text you requested + Salt for safety
         String msg = 'Confirmation code to close Booking #' + bookingName + ': ' + passcode + ' (Ref: ' + salt + ')';
-        for (Contact admin : admins) { TwilioService.sendSms(admin.MobilePhone, msg); }
+        
+        for (Contact admin : admins) {
+            TwilioService.sendSms(admin.MobilePhone, msg);
+        }
+        
         passcodeSent = true;
     }
 
@@ -63,7 +82,7 @@ public with sharing class CloseBookingController {
         bookingToClose.KM_End__c = currentTankState.KM__c;
         bookingToClose.Location_Stop__Latitude__s = currentTankState.Location__Latitude__s;
         bookingToClose.Location_Stop__Longitude__s = currentTankState.Location__Longitude__s;
-        update bookingToClose; // This update forces the Roll-Up Summary to recalculate
+        update bookingToClose;
 
         // Reset Tank
         Tanks__c tankToUpdate = new Tanks__c(Id = tank.Id, Status__c = 'Open');
@@ -74,15 +93,7 @@ public with sharing class CloseBookingController {
         Decimal fuelSum = (Decimal)tripResults[0].get('totalFuel');
         if (fuelSum == null) fuelSum = 0;
 
-        // --- CHANGE HERE ---
-        // We now query KM_Total__c (The Roll-Up) instead of Total_KM__c (The Formula)
-        Booking__c closedBooking = [
-            SELECT Id, Contact__c, Admin__c, Start_Time__c, End_Time__c, 
-                   KM_Total__c, // <--- CHANGED: Swapped Formula for Roll-Up field
-                   Tank__c, KM_Start__c, KM_End__c 
-            FROM Booking__c 
-            WHERE Id = :bookingToClose.Id
-        ];
+        Booking__c closedBooking = [SELECT Id, Contact__c, Admin__c, Start_Time__c, End_Time__c, Total_KM__c, Total_Days__c, Tank__c, KM_Start__c, KM_End__c FROM Booking__c WHERE Id = :bookingToClose.Id];
         
         if (closedBooking.Admin__c == false) {
             Gasoline__c gasSettings = Gasoline__c.getOrgDefaults();
@@ -92,11 +103,7 @@ public with sharing class CloseBookingController {
                 Start_Time__c = closedBooking.Start_Time__c,
                 End_Time__c = closedBooking.End_Time__c,
                 Tank__c = closedBooking.Tank__c,
-                
-                // --- CHANGE HERE ---
-                // Using the accurate Roll-Up value for the final Charge
-                KM_Total__c = closedBooking.KM_Total__c, 
-                
+                KM_Total__c = closedBooking.Total_KM__c,
                 Total_Fuel__c = fuelSum,
                 KM_Start__c = closedBooking.KM_Start__c,
                 KM_End__c = closedBooking.KM_End__c,
