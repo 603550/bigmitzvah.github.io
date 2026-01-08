@@ -8,7 +8,7 @@ global class DailyStatusScheduler implements Schedulable {
         // 2. BULKIFIED QUERY
         List<Booking__c> activeBookings = [
             SELECT Name, Total_Days__c, Days_Limit__c, Total_Flags__c, Status__c, 
-                   Total_Trips__c, KM_Total__c, Total_Fuel__c,
+                   Total_Trips__c, Total_KM__c, Total_Fuel__c,
                    Contact__r.Name, Contact__r.MobilePhone,
                    Tank__r.Id, Tank__r.Name, Tank__r.KM__c, Tank__r.Fuel_Level__c, 
                    Tank__r.Location__Latitude__s, Tank__r.Location__Longitude__s
@@ -34,7 +34,7 @@ global class DailyStatusScheduler implements Schedulable {
             Decimal trips = (b.Total_Trips__c != null) ? b.Total_Trips__c : 0;
             Decimal flags = (b.Total_Flags__c != null) ? b.Total_Flags__c : 0; 
             
-            String totalKm = (b.KM_Total__c != null) ? b.KM_Total__c.setScale(0).format() : '0';
+            String totalKm = (b.Total_KM__c != null) ? b.Total_KM__c.setScale(0).format() : '0';
             String fuelUsed = (b.Total_Fuel__c != null) ? String.valueOf(b.Total_Fuel__c.setScale(1)) : '0';
 
             Decimal currentFuelRaw = (b.Tank__r.Fuel_Level__c != null) ? b.Tank__r.Fuel_Level__c : 0;
