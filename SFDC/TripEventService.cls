@@ -79,6 +79,9 @@ public without sharing class TripEventService {
         // 4. Processing Loop
         List<Trip__c> tripUpserts = new List<Trip__c>();
         Map<Id, Decimal> tankKmUpdates = new Map<Id, Decimal>();
+        
+        // ** ADDED THIS MISSING VARIABLE **
+        Set<Id> bookingsWithNewStarts = new Set<Id>(); 
 
         for (String txn : byTxn.keySet()) {
             List<Trip_Event__c> txnEvents = byTxn.get(txn);
@@ -146,6 +149,9 @@ public without sharing class TripEventService {
                     trip.Start_Time__c = e.timestamp__c;
                     if (trip.End_Time__c == null) trip.Active__c = true;
                     if (tank != null) trip.KM_Start__c = tank.KM__c;
+                    
+                    // --- TRACK NEW STARTS ---
+                    if (trip.Booking__c != null) bookingsWithNewStarts.add(trip.Booking__c);
                 }
                 else if (e.eventType__c == 'tripEnd') {
                     trip.End_Time__c = e.timestamp__c;
@@ -176,6 +182,22 @@ public without sharing class TripEventService {
             }
             tripUpserts.add(trip);
         }
+        
+        // --- INSERT START: Auto-Close Stale Trips ---
+        if (!bookingsWithNewStarts.isEmpty()) {
+            List<Trip__c> staleTrips = [
+                SELECT Id FROM Trip__c 
+                WHERE Booking__c IN :bookingsWithNewStarts 
+                AND Active__c = TRUE 
+                AND Transaction__c NOT IN :txns // Don't close the trip we are currently creating!
+            ];
+            for(Trip__c t : staleTrips) {
+                t.Active__c = false;
+                t.End_Time__c = System.now();
+            }
+            if (!staleTrips.isEmpty()) tripUpserts.addAll(staleTrips);
+        }
+        // --- INSERT END ---
 
         // 5. Commit (Partial Success Enabled)
         if (!tripUpserts.isEmpty()) Database.upsert(tripUpserts, Trip__c.Transaction__c, false);
