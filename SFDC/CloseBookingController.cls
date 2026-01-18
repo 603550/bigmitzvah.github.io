@@ -11,11 +11,12 @@ public with sharing class CloseBookingController {
 
     public void sendPasscode() {
         // 1. Safety Check
+        /* <-- COMMENT START
         List<Trip__c> activeTrips = [SELECT Id FROM Trip__c WHERE Booking__r.Tank__c = :tank.Id AND Booking__r.Active__c = TRUE AND Active__c = TRUE LIMIT 1];
         if (!activeTrips.isEmpty()) {
             ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Error: Active trip running.'));
             return;
-        }
+        }COMMENT END --> */
 
         // 2. Fetch Booking Name
         List<Booking__c> currentBookings = [SELECT Name FROM Booking__c WHERE Tank__c = :tank.Id AND Active__c = TRUE LIMIT 1];
@@ -43,10 +44,7 @@ public with sharing class CloseBookingController {
         update contactsToUpdate;
 
         // 5. Send Code to ALL Admins
-        // Added Salt (Ref) at the end to bypass spam filters
         String salt = String.valueOf(System.currentTimeMillis()).right(5);
-        
-        // Exact text you requested + Salt for safety
         String msg = 'Confirmation code to close Booking #' + bookingName + ': ' + passcode + ' (Ref: ' + salt + ')';
         
         for (Contact admin : admins) {
@@ -57,14 +55,16 @@ public with sharing class CloseBookingController {
     }
 
     public PageReference verifyAndCloseBooking() {
+        // 1. Verify Passcode
         List<Contact> matchingAdmins = [SELECT Id FROM Contact WHERE Admin__c = TRUE AND OTP__c = :enteredPasscode AND OTP_Exipre__c > :System.now() LIMIT 1];
         if (matchingAdmins.isEmpty()) {
             ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, 'Invalid.'));
             return null;
         }
         
+        // Query Tank__c so we can pass it to the Charge later
         List<Booking__c> activeBookings = [
-            SELECT Id, Contact__r.MobilePhone, Contact__r.FirstName, Contact__c, Admin__c, Start_Time__c, KM_Start__c 
+            SELECT Id, Contact__r.MobilePhone, Contact__r.FirstName, Contact__c, Admin__c, Start_Time__c, KM_Start__c, Tank__c
             FROM Booking__c 
             WHERE Tank__c = :tank.Id AND Active__c = TRUE 
             LIMIT 1
@@ -74,53 +74,95 @@ public with sharing class CloseBookingController {
         
         Tanks__c currentTankState = [SELECT KM__c, Location__Latitude__s, Location__Longitude__s FROM Tanks__c WHERE Id = :tank.Id LIMIT 1];
         Booking__c bookingToClose = activeBookings[0];
-        
-        // Close Booking
+
+    // --- INSERT START: Force Close Ghost Trips ---
+    // If Bouncie missed a "Trip End" signal, we manually close the trip here.
+    List<Trip__c> ghostTrips = [SELECT Id FROM Trip__c WHERE Booking__c = :bookingToClose.Id AND Active__c = TRUE];
+    if (!ghostTrips.isEmpty()) {
+        for(Trip__c t : ghostTrips) {
+            t.Active__c = false;
+            t.End_Time__c = System.now(); // Stamp it so it doesn't look broken
+        }
+        update ghostTrips;
+    }
+    // --- INSERT END ---
+
+        // --- MANUAL CALCULATION (Trip Stats) ---
+        // Sums up all trips instantly to ensure accurate billing
+        AggregateResult[] tripResults = [
+            SELECT SUM(Total_Fuel__c) totalFuel, 
+                   SUM(Trip_KM__c) totalDist 
+            FROM Trip__c 
+            WHERE Booking__c = :bookingToClose.Id
+        ];
+
+        Decimal fuelSum = (Decimal)tripResults[0].get('totalFuel');
+        if (fuelSum == null) fuelSum = 0;
+
+        Decimal distSum = (Decimal)tripResults[0].get('totalDist');
+        if (distSum == null) distSum = 0;
+
+        // 2. Close Booking
         bookingToClose.Active__c = false;
         bookingToClose.End_Time__c = System.now();
         bookingToClose.Status__c = 'Closed';
         bookingToClose.KM_End__c = currentTankState.KM__c;
         bookingToClose.Location_Stop__Latitude__s = currentTankState.Location__Latitude__s;
         bookingToClose.Location_Stop__Longitude__s = currentTankState.Location__Longitude__s;
+        
+        // Save Totals to Booking History
+        bookingToClose.Total_Fuel__c = fuelSum;
+        bookingToClose.Total_KM__c = distSum;
+        
         update bookingToClose;
 
-        // Reset Tank
+        // 3. Reset Tank
         Tanks__c tankToUpdate = new Tanks__c(Id = tank.Id, Status__c = 'Open');
         update tankToUpdate;
 
-        // Calc Fuel
-        AggregateResult[] tripResults = [SELECT SUM(Total_Fuel__c) totalFuel FROM Trip__c WHERE Booking__c = :bookingToClose.Id];
-        Decimal fuelSum = (Decimal)tripResults[0].get('totalFuel');
-        if (fuelSum == null) fuelSum = 0;
+        // 4. Generate Charge
+        if (bookingToClose.Admin__c == false) {
+            
+            // --- CALC DAYS (Calendar Days) ---
+            Date startDate = bookingToClose.Start_Time__c.date();
+            Date endDate = bookingToClose.End_Time__c.date();
+            Integer daysDiff = startDate.daysBetween(endDate);
+            if (daysDiff == 0) daysDiff = 1; // Minimum 1 day charge
 
-        Booking__c closedBooking = [SELECT Id, Contact__c, Admin__c, Start_Time__c, End_Time__c, Total_KM__c, Total_Days__c, Tank__c, KM_Start__c, KM_End__c FROM Booking__c WHERE Id = :bookingToClose.Id];
-        
-        if (closedBooking.Admin__c == false) {
             Gasoline__c gasSettings = Gasoline__c.getOrgDefaults();
             Charge__c newCharge = new Charge__c(
-                Booking__c = closedBooking.Id,
-                Contact__c = closedBooking.Contact__c,
-                Start_Time__c = closedBooking.Start_Time__c,
-                End_Time__c = closedBooking.End_Time__c,
-                Tank__c = closedBooking.Tank__c,
-                KM_Total__c = closedBooking.Total_KM__c,
+                Booking__c = bookingToClose.Id,
+                Contact__c = bookingToClose.Contact__c,
+                Start_Time__c = bookingToClose.Start_Time__c,
+                End_Time__c = bookingToClose.End_Time__c,
+                
+                // Lookup
+                Tank__c = bookingToClose.Tank__c,
+                
+                // Stats
+                KM_Total__c = distSum,
                 Total_Fuel__c = fuelSum,
-                KM_Start__c = closedBooking.KM_Start__c,
-                KM_End__c = closedBooking.KM_End__c,
+                Total_Days__c = daysDiff,
+                
+                // Meta
+                KM_Start__c = bookingToClose.KM_Start__c,
+                KM_End__c = bookingToClose.KM_End__c,
                 Location_GPS__Latitude__s = currentTankState.Location__Latitude__s,
                 Location_GPS__Longitude__s = currentTankState.Location__Longitude__s
             );
+            
+            // Apply Gas Settings (Price & Date)
             if (gasSettings != null) {
                 newCharge.Gas_Price__c = gasSettings.Gas_Price__c;
                 newCharge.Fuel_Rate__c = gasSettings.Gas_Price__c;
+                newCharge.Gas_Date__c = gasSettings.Gas_Date__c; // <--- ADDED
             }
             insert newCharge;
 
-            // Send Customer Feedback SMS
+            // Send Feedback SMS
             if (bookingToClose.Contact__r.MobilePhone != null) {
                 String firstName = (bookingToClose.Contact__r.FirstName != null) ? bookingToClose.Contact__r.FirstName : 'Driver';
-                String feedbackMessage = 'Thank you for driving with BigMitzvah.org ' + firstName + '! How was your experience? Let us know by replying to this text.';
-                TwilioService.sendSms(bookingToClose.Contact__r.MobilePhone, feedbackMessage);
+                TwilioService.sendSms(bookingToClose.Contact__r.MobilePhone, 'Thank you ' + firstName + '! How was your experience? Reply to let us know.');
             }
         }
 
